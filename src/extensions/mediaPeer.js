@@ -35,7 +35,7 @@ module.exports = (function() {
       var media = new Media(src, tag, autoload)
 
       // TODO Check for the local storage?
-      this.requestPeer(src)
+      this.on('signal-ready', this.requestPeer.bind(this, src))
 
       // If no peer give answers within 5 seconds the file will be downloaded
       // directly from the server

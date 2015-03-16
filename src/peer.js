@@ -68,7 +68,9 @@ function Peer(options) {
 
   if(typeof options === 'undefined') {
     console.info('Default parameters used')
-    options = {}
+    options = {
+      signal: { url: '' }
+    }
   } else {
     extensions.apply(this, options.extensions)
     if(options.hasOwnProperty('peer') &&  options.peer.hasOwnProperty('ttl')) {
@@ -78,7 +80,6 @@ function Peer(options) {
 
   // Set signaling system
   var signal = new Signal(this, options.signal)
-  this.id = signal.getId() // Get id
 
   // Will hold the peers when a connection is created
   this.connections = new Map()
@@ -91,7 +92,7 @@ function Peer(options) {
   this.on('answer', onanswer)
   this.on('icecandidate', onicecandidate)
   this.on('request-peer', onrequestpeer)
-
+  this.on('first-view', onfirstview)
 }
 
 Peer.prototype = Object.create(MessageEmitter.prototype)
@@ -309,4 +310,11 @@ var onrequestpeer = function(message) {
   peerConnection.createSDPOffer(sendOffer.bind(this, message))
   // Save the new connexion
   this.connections.set(message.from, peerConnection)
+}
+
+var onfirstview = function(message) {
+  console.info('First view received from server')
+  this.id = message.data.id
+  this.view = message.data.view
+  this.emit({type: 'signal-ready', from: this.id, to: this.id})
 }
