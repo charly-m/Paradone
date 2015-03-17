@@ -147,7 +147,9 @@ function PeerConnection(peer, remotePeer) {
   // Events
 
   /**
-   * Directly send ICECandidates to the remote peer when received
+   * Send ICECandidates to the remote peer as soon as they are received. We
+   * cannot use the connection to send them as it probably isn't open yet and
+   * the ICECandidates are need by the remote peer to establish connection.
    *
    * @private
    * @event PeerConnection#onicecandidate

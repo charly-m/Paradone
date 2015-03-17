@@ -118,6 +118,7 @@ Peer.prototype.send = function(message) {
   }
 
   if(!messageValidator(message)) {
+    // TODO Never called
     throw new Error('Message object is invalid')
   }
 
