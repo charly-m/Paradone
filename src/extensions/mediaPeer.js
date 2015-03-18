@@ -170,7 +170,7 @@ module.exports = (function() {
    */
   var onrequestpart = function(message) {
     var sendChunks = (function(chunk) {
-      //TODO Gotta check
+      // TODO Gotta check if node has the file or not
       // We have to change the Uint8Array in a Array
       // Should take less space in the message and be easier to parse
       var data = []
