@@ -66,13 +66,10 @@ function Peer(options) {
 
   MessageEmitter.call(this)
 
-  if(typeof options === 'undefined') {
-    console.info('Default parameters used')
-    options = {
-      signal: { url: '' }
+  if(typeof options !== 'undefined') {
+    if(options.hasOwnProperty('extensions')) {
+      extensions.apply(this, options.extensions)
     }
-  } else {
-    extensions.apply(this, options.extensions)
     if(options.hasOwnProperty('peer') &&  options.peer.hasOwnProperty('ttl')) {
       Peer.ttl = options.peer.ttl
     }

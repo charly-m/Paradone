@@ -3,7 +3,9 @@
 
 var Peer = require('../src/peer.js')
 var MessageEmitter = require('../src/messageEmitter.js')
-
+var options = {
+  signal: { url: 'ws://127.0.0.1'}
+}
 window.paradone = window.paradone || {}
 window.paradone.Peer = Peer
 
@@ -12,7 +14,7 @@ describe('Peer', function() {
 
   describe('@constructor', function() {
     it('should be a EventEmitter', function() {
-      var peer = new Peer()
+      var peer = new Peer(options)
       expect(peer instanceof MessageEmitter).to.be.true()
     })
   })
@@ -27,8 +29,8 @@ describe('Peer', function() {
    * - Disconnection of a peer
    */
   describe('1-to-1 connection protocol', function() {
-    var peerA = new Peer()
-    var peerB = new Peer()
+    var peerA = new Peer(options)
+    var peerB = new Peer(options)
     var messages = {}
 
     describe('A should broadcast a peer request', function() {
@@ -196,9 +198,9 @@ describe('Peer', function() {
       var peers = {}
 
       before(function(done) {
-        var peerA = peers.A = new Peer()
-        var peerB = peers.B = new Peer()
-        var peerC = peers.C = new Peer()
+        var peerA = peers.A = new Peer(options)
+        var peerB = peers.B = new Peer(options)
+        var peerC = peers.C = new Peer(options)
 
         peerA.id = 'A'
         peerB.id = 'B'
@@ -276,9 +278,9 @@ describe('Peer', function() {
     describe('One node connecting requesting multiple peers', function() {
 
       var peers = {}
-      var peerA = peers.A = new Peer()
-      var peerB = peers.B = new Peer()
-      var peerC = peers.C = new Peer()
+      var peerA = peers.A = new Peer(options)
+      var peerB = peers.B = new Peer(options)
+      var peerC = peers.C = new Peer(options)
 
       // Connect A to B and send request from C to both
       before(function(done) {

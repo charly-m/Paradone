@@ -6,8 +6,11 @@
  *
  */
 function Signal(peer, options) {
-  // url -> 'ws://127.0.0.1:8081'
-  var url = options.url || 'ws://127.0.0.1:8081'
+  if(typeof options === 'undefined' ||
+     typeof options.url === 'undefined') {
+    throw new Error('Signal\'s options argument malformed')
+  }
+  var url = options.url
   var socket = new WebSocket(url)
 
   socket.addEventListener('open', onconnect.bind(this))
