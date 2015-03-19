@@ -1,17 +1,21 @@
 {
   "name": "Paradone",
-  "version": "0.0.1",
-  "description": "P2P Streaming in the browser",
+  "version": "0.2.1",
+  "description": "Peer-to-peer assisted media diffusion in the browser with WebRTC and MediaSource",
   "author": "GaspardP",
   "license": "AGPLv3",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Paradone/Paradone.git"
+  },
   "main": "src/main.js",
   "scripts": {
-    "build": "./node_modules/.bin/gulp build",
-    "clean": "find . -type f -name \"#*#\" -o -name \"*~\" -delete; rm -r ./dist ./doc",
-    "debug": "./node_modules/.bin/gulp debug",
-    "doc": "./node_modules/.bin/jsdoc -P ./package.json -d ./doc -r ./src",
-    "test": "./node_modules/.bin/gulp test",
-    "watch": "./node_modules/.bin/gulp watch"
+    "build": "gulp build",
+    "clean": "find . -type f -name \"#*#\" -o -name \"*~\" -delete; rm -rf ./dist ./doc",
+    "debug": "gulp debug",
+    "doc": "jsdoc -P ./package.json -d ./doc -r ./src",
+    "test": "gulp test",
+    "watch": "gulp watch"
   },
   "dependencies": {
     "localforage": "~1.1.1"
