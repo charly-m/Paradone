@@ -35,14 +35,22 @@ function MessageEmitter() {
 }
 
 /**
- * Adds a listener function to the specified message type.
+ * Synonym of {@link MessageEmitter#on}
+ *
+ * @function MessageEmitter#addListener
+ * @see MessageEmitter#on
+ */
+MessageEmitter.prototype.addListener = MessageEmitter.prototype.on
+
+/**
+ * Adds a listener function to the specified message type. The method
+ * `addListener` can also be used.
  *
  * @function MessageEmitter#on
  * @param {String} messageType - Type of message the listener will handle
  * @param {Function} listener - Method called when the message is emitted
  * @return {MessageEmitter} Current instance for chaining purposes
-*/
-MessageEmitter.prototype.addListener =
+ */
 MessageEmitter.prototype.on = function(messageType, listener) {
   if(!this.listeners.has(messageType)) {
     this.listeners.set(messageType, new Set())
@@ -59,7 +67,7 @@ MessageEmitter.prototype.on = function(messageType, listener) {
  * @param {String} messageType - Type of message the listener will handle
  * @param {Function} listener - Method called when the message is emitted
  * @return {MessageEmitter} Current instance for chaining purposes
-*/
+ */
 MessageEmitter.prototype.once = function(messageType, listener) {
   var autodestroy = message => {
     listener(message)
@@ -76,7 +84,7 @@ MessageEmitter.prototype.once = function(messageType, listener) {
  * @param {String} messageType - Type of message the listener handles
  * @param {Function} listener - Listener that should be removed
  * @return {MessageEmitter} Current instance for chaining
-*/
+ */
 MessageEmitter.prototype.removeListener = function(messageType, listener) {
   if(this.listeners.has(messageType)) {
     this.listeners.get(messageType).delete(listener)
@@ -90,7 +98,7 @@ MessageEmitter.prototype.removeListener = function(messageType, listener) {
  * @function MessageEmitter#removeAllListeners
  * @param {String} messageType - Type of message the listeners handle
  * @return {MessageEmitter} Current instance for chaining
-*/
+ */
 MessageEmitter.prototype.removeAllListeners = function(messageType) {
   if(typeof messageType === 'undefined') {
     this.listeners.clear()
@@ -111,15 +119,15 @@ MessageEmitter.prototype.removeAllListeners = function(messageType) {
  * @return {MessageEmitter} Current instance for chaining
  */
 MessageEmitter.prototype.post =
-MessageEmitter.prototype.emit = function(message) {
-  var type = message.type
-  if(typeof type === 'undefined') {
-    throw new Error('The message object isn\'t well formed')
-  } else if(this.listeners.has(type)) {
-    this.listeners.get(type).forEach(listener => listener.call(this, message))
+  MessageEmitter.prototype.emit = function(message) {
+    var type = message.type
+    if(typeof type === 'undefined') {
+      throw new Error('The message object isn\'t well formed')
+    } else if(this.listeners.has(type)) {
+      this.listeners.get(type).forEach(listener => listener.call(this, message))
+    }
+    return this
   }
-  return this
-}
 
 /**
  * @function MessageEmitter#listenerCount

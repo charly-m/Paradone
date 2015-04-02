@@ -19,8 +19,10 @@
 'use strict'
 
 import MediaPeer from './mediaPeer.js'
+import Gossip from './gossip.js'
 
 var modules = {
+  gossip: Gossip,
   media: MediaPeer
 }
 
@@ -36,7 +38,11 @@ var modules = {
  *        initial Peer object
  */
 export function apply(peer, extensions) {
-  extensions.forEach(function(ext) {
-    modules[ext.name].call(peer, ext)
-  }, this)
+  extensions.forEach(ext => modules[ext.name].call(peer, ext))
 }
+
+/**
+ * @typedef Extension
+ * @type {Object}
+ * @property {string} name
+ */

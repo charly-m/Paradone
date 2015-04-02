@@ -12,7 +12,7 @@
   "scripts": {
     "build": "./scripts/build.sh",
     "clean": "./scripts/clean.sh",
-    "debug": "mkdir dist 2>/dev/null;watchify src/index.js --standalone paradone -d -o dist/paradone.js -v",
+    "debug": "./scripts/debug.sh",
     "doc": "./scripts/doc.sh",
     "help": "./scripts/help.sh",
     "start": "./scripts/help.sh",
@@ -40,7 +40,8 @@
     "karma-notify-reporter": "0.1.X",
     "karma-sinon": "1.X.X",
     "uglify-js": "2.X.X",
-    "watchify": "3.X.X"
+    "watchify": "3.X.X",
+    "workerify": "git://github.com/josephros/workerify.git"
   },
   "browserify": {
     "transform": [
