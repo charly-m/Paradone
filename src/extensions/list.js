@@ -18,11 +18,25 @@
  */
 'use strict'
 
-module.exports = {
-  apply: function(peer, extensions) {
-    extensions.forEach(function(ext) {
-      this[ext.name].call(peer, ext)
-    }, this)
-  },
-  media: require('./mediaPeer.js')
+import MediaPeer from './mediaPeer.js'
+
+var modules = {
+  media: MediaPeer
+}
+
+/**
+ * Use mixins to give more functionalities to a Peer object
+ * @module extensions
+ */
+
+/**
+ * @function module:extensions~apply
+ * @param {Peer} peer - Peer instance to be extended
+ * @param {Array.<Extension>} extensions - List of mixins used to extend the
+ *        initial Peer object
+ */
+export function apply(peer, extensions) {
+  extensions.forEach(function(ext) {
+    modules[ext.name].call(peer, ext)
+  }, this)
 }

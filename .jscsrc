@@ -54,5 +54,6 @@
     "catch"
   ],
   "validateQuoteMarks": "'",
-  "validateIndentation": 2
+  "validateIndentation": 2,
+  "esnext": true
 }

@@ -1,5 +1,4 @@
-/* @flow weak */
-'use strict';
+'use strict'
 
 var Peer = require('../src/peer.js')
 var MessageEmitter = require('../src/messageEmitter.js')
@@ -15,7 +14,7 @@ describe('Peer', function() {
   describe('@constructor', function() {
     it('should be a EventEmitter', function() {
       var peer = new Peer(options)
-      expect(peer instanceof MessageEmitter).to.be.true()
+      expect(peer instanceof MessageEmitter).to.be.true
     })
   })
 
@@ -124,7 +123,7 @@ describe('Peer', function() {
 
       it('should have sent icecandidate type message', function() {
         var iceA = messages.iceFromA
-        expect(iceA).not.to.be.null()
+        expect(iceA).not.to.be.null
         expect(iceA).not.to.be.an('undefined')
         expect(iceA.type).to.be.equal('icecandidate')
       })
@@ -146,7 +145,7 @@ describe('Peer', function() {
     describe('B should have received ICECandidates for A', function() {
       it('should have sent icecandidate type message', function() {
         var iceB = messages.iceFromB
-        expect(iceB).not.to.be.null()
+        expect(iceB).not.to.be.null
         expect(iceB).not.to.be.an('undefined')
         expect(iceB.type).to.be.equal('icecandidate')
       })

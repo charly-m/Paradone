@@ -15,16 +15,17 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow weak */
 'use strict'
 
-var dataChannel = require('./dataChannel.js')
-var util = require('./util.js')
-module.exports = PeerConnection
+import * as datachannel from './datachannel.js'
+import * as util from './util.js'
+export default PeerConnection
 
 /**
- * @typedef RTCPeerConnection
+ * @external RTCPeerConnection
  * @see http://www.w3.org/TR/webrtc/#rtcpeerconnection-interface
  */
 var RTCPeerConnection =
@@ -32,7 +33,7 @@ var RTCPeerConnection =
     window.mozRTCPeerConnection ||
     window.webkitRTCPeerConnection
 /**
- * @typedef RTCSessionDescription
+ * @external RTCSessionDescription
  * @see http://www.w3.org/TR/webrtc/#idl-def-RTCSessionDescription
  */
 var RTCSessionDescription =
@@ -40,13 +41,16 @@ var RTCSessionDescription =
     window.mozRTCSessionDescription ||
     window.webkitRTCSessionDescription
 /**
- * @typedef RTCConfiguration
+ * @external RTCConfiguration
  * @see http://www.w3.org/TR/webrtc/#idl-def-RTCConfiguration
  */
 var RTCConfiguration = {
   iceServers: [
     { // Amazon
-      /** @deprecated replaced by `urls` */
+      /**
+       * @memberof external:RCTConfiguration.iceServers
+       * @deprecated replaced by `urls`
+       */
       url: 'stun:23.21.150.121',
       urls: 'stun:23.21.150.121'
     }, {
@@ -60,11 +64,11 @@ var RTCConfiguration = {
 var MediaConstraints// Should NOT be defined
 
 /**
- * @class The PeerConnection is a RTCPeerConnection configured to forward event
- *        to the Peer object attached to it.
+ * The PeerConnection is a RTCPeerConnection configured to forward event to the
+ * Peer object attached to it.
  *
- * @constructor
- * @augments RTCPeerConnection
+ * @class PeerConnection
+ * @augments external:RTCPeerConnection
  * @param {Peer} peer - Peer holding the connection (usually the local node)
  * @param {string} remotePeer - Id of the remote peer
  * @property {string} id - Id of the peer
@@ -89,7 +93,7 @@ function PeerConnection(peer, remotePeer) {
    * @return {DataChannel} The configured DataChannel
    */
   pc.createChannel = function() {
-    pc.channel = dataChannel.create(peer, pc, remotePeer)
+    pc.channel = datachannel.create(peer, pc, remotePeer)
     return pc.channel
   }
 
@@ -97,7 +101,7 @@ function PeerConnection(peer, remotePeer) {
    * Creates the SDPOffer to open a connection to the remote peer
    *
    * @function PeerConnection#createSDPOffer
-   * @param {function} sendOffer - Use the signaling server to transmit the
+   * @param {Function} sendOffer - Use the signaling server to transmit the
    *        offer to the remote Peer
    */
   pc.createSDPOffer = function(sendOffer) {
@@ -114,7 +118,7 @@ function PeerConnection(peer, remotePeer) {
    *
    * @function PeerConnection#createSDPAnswer
    * @param {string} remoteSDP - Id of the remote peer
-   * @param {function} sendAnswer - callback used to send the SDPAnswer. Use
+   * @param {Function} sendAnswer - callback used to send the SDPAnswer. Use
    *        the signaling system to transmit it
    */
   pc.createSDPAnswer = function(remoteSDP, sendAnswer) {
@@ -151,8 +155,6 @@ function PeerConnection(peer, remotePeer) {
    * cannot use the connection to send them as it probably isn't open yet and
    * the ICECandidates are need by the remote peer to establish connection.
    *
-   * @private
-   * @event PeerConnection#onicecandidate
    * @param {Event} event - Contains the candidate when the callback is fired
    */
   pc.onicecandidate = function(event) {
@@ -163,7 +165,7 @@ function PeerConnection(peer, remotePeer) {
       type: 'icecandidate',
       from: id,
       to: remotePeer,
-      ttl: 3,
+      ttl: peer.ttl,
       data: event.candidate,
       forwardBy: []
     })
@@ -173,12 +175,10 @@ function PeerConnection(peer, remotePeer) {
    * When a the remote peer opens a DataChannel, it adds the default event
    * handlers and tells the Peer to emit an `onconnected` event
    *
-   * @private
-   * @event PeerConnection#ondatachannel
    * @param {Event} event - Contains a RTCDataChannel created by the remote peer
    */
   pc.ondatachannel = function(event) {
-    pc.channel = dataChannel.setHandlers(
+    pc.channel = datachannel.setHandlers(
       event.channel,
       peer,
       pc,

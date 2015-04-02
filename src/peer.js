@@ -15,27 +15,27 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow weak */
 'use strict'
 
-var MessageEmitter = require('./messageEmitter.js')
-var PeerConnection = require('./peerConnection.js')
-var Signal = require('./signal.js')
-var util = require('./util.js')
-var extensions = require('./extensions/list.js')
-
-module.exports = Peer
+import MessageEmitter from './messageEmitter.js'
+import PeerConnection from './peerConnection.js'
+import Signal from './signal.js'
+import * as util from './util.js'
+import * as extensions from './extensions/list.js'
+export default Peer
 
 /**
- * @typedef RTCIceCandidate
+ * @external RTCIceCandidate
  * @see https://w3c.github.io/webrtc-pc/#rtcicecandidate-type
  */
 var RTCIceCandidate =
     window.RTCIceCandidate ||
     window.mozRTCIceCandidate
 /**
- * @typedef RTCSessionDescription
+ * @external RTCSessionDescription
  * @see https://w3c.github.io/webrtc-pc/#rtcsessiondescription-class
  */
 var RTCSessionDescription =
@@ -44,19 +44,21 @@ var RTCSessionDescription =
     window.webkitRTCSessionDescription
 
 /**
- * @class A peer holds the information for connections with the mesh, and info
- *        about possessed files. It communicates with other peers through a
- *        messaging system. Local objects can subscribe to message event with
- *        the `on`function and send messages with the `emit` function.
+ * A peer holds the information for connections with the mesh, and info about
+ * possessed files. It communicates with other peers through a messaging system.
+ * Local objects can subscribe to message event with the `on`function and send
+ * messages with the `emit` function.
  *
- * @constructor
+ * @class Peer
+ * @implements {MessageEmitter}
  * @param {Object} [options] - Configuration options
  *
  * @property {string} id - Id of the peer
  * @property {Map.<PeerConnection>} connections - Connections indexed by remote
  *           peer id
- * @property {Map.<Set.<RTCIceCandidate>>} icecandidates - Store ICECandidates
- *           for a connection if it's not active yet
+ * @property {Map.<Set.<external:RTCIceCandidate>>} icecandidates - Store
+ *           ICECandidates for a connection if it's not active yet
+ * @property {number} ttl - `Time To Live' of a message
  */
 function Peer(options) {
   if(!(this instanceof Peer)) {
@@ -70,7 +72,7 @@ function Peer(options) {
     if(options.hasOwnProperty('extensions')) {
       extensions.apply(this, options.extensions)
     }
-    if(options.hasOwnProperty('peer') &&  options.peer.hasOwnProperty('ttl')) {
+    if(options.hasOwnProperty('peer') && options.peer.hasOwnProperty('ttl')) {
       Peer.ttl = options.peer.ttl
     }
   }
@@ -81,7 +83,7 @@ function Peer(options) {
   // Will hold the peers when a connection is created
   this.connections = new Map()
   this.icecandidates = new Map()
-
+  this.ttl = Peer.ttl
   this.connections.set('signal', signal)
 
   // Message Handlers
@@ -94,6 +96,12 @@ function Peer(options) {
 
 Peer.prototype = Object.create(MessageEmitter.prototype)
 
+/**
+ * Maximum `time to live' for a message sent on the p2p network
+ *
+ * @name Peer.ttl
+ * @type {number}
+ */
 Peer.ttl = 3
 
 /**
@@ -101,6 +109,7 @@ Peer.ttl = 3
  * Two solutions: The peer has the recipient as neighbour or we need to
  * broadcast the message.
  *
+ * @function Peer#send
  * @param {Message} message - information to be sent
  */
 Peer.prototype.send = function(message) {
@@ -149,26 +158,30 @@ Peer.prototype.send = function(message) {
 
 /**
  * Send a new request for peers to everyone
+ *
+ * @function Peer#requestPeer
  */
 Peer.prototype.requestPeer = function() {
   this.send({
     type: 'request-peer',
     from: this.id,
     to: -1,
-    ttl: 3,
+    ttl: this.ttl,
     forwardBy: []
   })
 }
 
 /**
  * Extract information to define an answer message
+ *
+ * @function Peer#respondTo
  * @param {Message} message - Original message
  * @param {Object} answer - Values (like data and type) to be sent
  */
 Peer.prototype.respondTo = function(message, answer) {
   answer.from = this.id
   answer.to = message.from
-  answer.ttl = Peer.ttl
+  answer.ttl = this.ttl
   answer.forwardBy = []
   this.send(answer)
 }
@@ -176,6 +189,8 @@ Peer.prototype.respondTo = function(message, answer) {
 /**
  * When the node receives a message for someone else it decrease the ttl by one
  * and forwards it
+ *
+ * @function Peer#forward
  * @param {Message} message - message to be forwarded
  */
 Peer.prototype.forward = function(message) {
@@ -190,7 +205,6 @@ Peer.prototype.forward = function(message) {
  * will be established, the datachannel event should be triggered indicating
  * that the connexion can be used to send messages.
  *
- * @event Peer#onanswer
  * @param {Message} message - An answer containing the remote SDP Description
  *        needed to set up the connection
  */
@@ -218,7 +232,6 @@ var onanswer = function(message) {
  * Remote ICECandidates have to be added to the corresponding peerConnection. If
  * the connection is not established yet, we store the data.
  *
- * @event Peer#onicecandidate
  * @param {Message} message - an icecandidate type message
  */
 var onicecandidate = function(message) {
@@ -244,7 +257,6 @@ var onicecandidate = function(message) {
 /**
  * Extract the SDPOffer from the received message and respond with a SDPAnswer
  *
- * @event Peer#onoffer
  * @param {Message} message - An offer type message containing the remote peer's
  *        SDPOffer
  */
@@ -268,13 +280,11 @@ var onoffer = function(message) {
       this.icecandidates.delete(remotePeer)
     }
   }
-  // Send an answer to the message
-  var sendAnswer = function(message, answer) {
-    this.respondTo(message, {type: 'answer', data: answer})
-  }
 
   // Create and send the SDPAnswer
-  peerConnection.createSDPAnswer(remoteSDP, sendAnswer.bind(this, message))
+  peerConnection.createSDPAnswer(remoteSDP, answer => {
+    this.respondTo(message, {type: 'answer', data: answer})
+  })
   // Add ICECandidate to the peer connection if we already have some
   addIceCandidate.call(this, remotePeer, peerConnection)
   // Save the connection
@@ -285,7 +295,6 @@ var onoffer = function(message) {
  * The remote peer want our mediafile
  * The node begin the connection
  *
- * @event Peer#onrequestpeer
  * @param {Message} message - A request for a new connection
  */
 var onrequestpeer = function(message) {
@@ -297,18 +306,21 @@ var onrequestpeer = function(message) {
   }
 
   var peerConnection = new PeerConnection(this, message.from)
-  var sendOffer = function(message, offer) {
-    this.respondTo(message, { type: 'offer', data: offer })
-  }
-
   // Setup the communication channel only on one side
   peerConnection.createChannel()
   // Send the SDP Offer once the connection is created
-  peerConnection.createSDPOffer(sendOffer.bind(this, message))
+  peerConnection.createSDPOffer(offer => {
+    this.respondTo(message, { type: 'offer', data: offer })
+  })
   // Save the new connexion
   this.connections.set(message.from, peerConnection)
 }
 
+/**
+ * Handles recpetion of the first view
+ *
+ * @param {Message} message - The first view received from the server
+ */
 var onfirstview = function(message) {
   console.info('First view received from server')
   this.id = message.data.id

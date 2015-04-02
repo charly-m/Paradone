@@ -15,26 +15,37 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow weak */
 'use strict'
 
-var Firebase = require('firebase')
-module.exports = Signal
+/**
+ * @external Firebase
+ * @see https://www.npmjs.com/package/firebase
+ */
+import Firebase from 'firebase'
+export default SignalFirebase
 
 /**
- * @class Connection to the signal server with the Firebase module
+ * Connection to the signal server with the Firebase module
  *
- * @constructor
+ * @class SignalFirebase
+ * @implements {Signal}
  * @param {Peer} peer - Messages will be forwarded to this peer
- * @param {Object} opts - Connection options for Firebase (url, credentials)
+ * @param {Object} options - Connection options for Firebase (url, credentials)
+ * @property {string} id - Id of the peer
+ * @property {string} status - Status of the connection with the signaling
+ *           system
+ * @property {external:Firebase} firebase - Firebase instance used as signaling
+ *           system
  */
-function Signal(peer, opts) {
+function SignalFirebase(peer, options) {
   this.id = String(Date.now()) + String(Math.random()).slice(1, 6)
   this.status = 'open' // Interrop with other Connections
 
-  if(typeof opts !== 'undefined') {
-    this.firebase = new Firebase(opts.url)
+  if(typeof options !== 'undefined') {
+    this.firebase = new Firebase(options.url)
     setOnMessage(this.firebase, this.id, peer)
   } else {
     console.error('Bad options definition for Signal')
@@ -43,8 +54,10 @@ function Signal(peer, opts) {
 
 /**
  * @return {string} Id of the peer
+ * @deprecated Since v0.2.1
+ * @memberof SignalFirebase
  */
-Signal.prototype.getId = function() {
+SignalFirebase.prototype.getId = function() {
   return this.id
 }
 
@@ -55,9 +68,11 @@ Signal.prototype.getId = function() {
  *   Firebase broadcast
  * - The message data will be transformed to a JSON String
  *
- * @param {Message} message -  message to be sent on the mesh
+ * @param {Message} message - message to be sent on the mesh
+ * @override
+ * @memberof SignalFirebase
  */
-Signal.prototype.send = function(message) {
+SignalFirebase.prototype.send = function(message) {
   message.ttl = 0
   message = JSON.stringify(message)
   this.firebase.push(message)
@@ -66,10 +81,9 @@ Signal.prototype.send = function(message) {
 /**
  * Defines the callback handling new messages received from the sigbal server
  *
- * @private
  * @param {Firebase} firebase
- * @param {string} id -  Id of the peer
- * @param {Peer} peer -  instance of Peer object messages should be sent to
+ * @param {string} id - Id of the peer
+ * @param {Peer} peer - instance of Peer object messages should be sent to
  */
 var setOnMessage = function(firebase, id, peer) {
   firebase.on('child_added', function(snapshot) {

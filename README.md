@@ -74,7 +74,7 @@ The system needs a signaling server allowing users to initiate the communication
 between them. WebRTC lets you choose your preferred technology for signaling
 (websocket, xhr, email...).
 
-For now the project uses [Firebase](https://www.firebase.com) as [signaling
+You can use the [tracker system](https://github.com/paradone/tracker) as [signaling
 server](https://github.com/Paradone/Paradone/wiki/Signal).
 
 #### Developer side ####
@@ -82,11 +82,17 @@ server](https://github.com/Paradone/Paradone/wiki/Signal).
 The project is written in JavaScript and uses [npm](https://npmjs.com) to manage
 all dependencies.
 
-Different scripts are available with `npm run`
-- `build` Concatenate and minify the script
-- `debug` Auto-build on save with source-map
-- `test` Run the tests on the source files
-- `watch` Run tests on file change
+Different scripts are available with `npm run <cmd>` where `<cmd>` can be one of
+the following options:
+- `build` Concatenate and minify the script to generate the file
+  `dist/paradone.min.js`
+- `clean` Remove temporary files and generated builds and doc
+- `debug` Auto-build on file change with source-map support. Generates the file
+  `dist/paradone.js`
+- `doc`   Generate the documentation of the project in `doc/`
+- `help`  Display the available commands and their description
+- `test`  Run all tests once
+- `watch` Run tests on each file change
 
 ### Usage ###
 

@@ -1,5 +1,4 @@
-/* @flow weak */
-'use strict';
+'use strict'
 
 var ME = require('../src/messageEmitter.js')
 window.ME = ME
@@ -70,7 +69,7 @@ describe('MessageEmitter', function() {
     it('should trigger the listener', function() {
       me.emit({type: 'onlyonce'})
       expect(me.listenerCount()).to.be.eq(0)
-      expect(check).to.be.true()
+      expect(check).to.be.true
 
     })
 
@@ -152,8 +151,8 @@ describe('MessageEmitter', function() {
       me.on('type', l1)
         .on('type2', l2)
       me.emit({type: 'type'})
-      expect(check1).to.be.true()
-      expect(check2).to.be.false()
+      expect(check1).to.be.true
+      expect(check2).to.be.false
     })
 
     it('should trigger every listener of the same type', function() {
@@ -169,8 +168,8 @@ describe('MessageEmitter', function() {
       me.on('type', l1)
         .on('type', l2)
       me.emit({type: 'type'})
-      expect(check1).to.be.true()
-      expect(check2).to.be.true()
+      expect(check1).to.be.true
+      expect(check2).to.be.true
     })
 
   })

@@ -15,21 +15,36 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow weak */
 'use strict'
 
-var Media = require('./media.js')
-var Peer = require('./peer.js')
-var PeerConnection = require('./peerConnection.js')
-var Signal = require('./signal.js')
+import * as datachannel from './datachannel.js'
+import Media from './media.js'
+import Peer from './peer.js'
+import PeerConnection from './peerConnection.js'
+import Signal from './signal.js'
+import * as util from './util.js'
+
+// Export for the `paradone` module
+export default {
+  datachannel,
+  Media,
+  Peer,
+  PeerConnection,
+  Signal,
+  util,
+  start
+}
 
 /**
  * Find every video tag and start downloading and sharing them through the mesh
  *
+ * @function start
  * @param {Object} opts
  */
-var start = function(opts) {
+function start(opts) {
   document.addEventListener('DOMContentLoaded', function() {
     var videos = document.getElementsByTagName('video')
     for(var i = 0; i < videos.length; ++i) {
@@ -44,7 +59,7 @@ var start = function(opts) {
  * @param {Object} opts
  * @param {HTMLMediaElement} videoTag
  */
-var parseVideoTag = function(opts, videoTag) {
+function parseVideoTag(opts, videoTag) {
   var source = videoTag.src
   videoTag.removeAttribute('src')
   var peer = new Peer(opts)
@@ -53,22 +68,10 @@ var parseVideoTag = function(opts, videoTag) {
   window.peer = peer
 }
 
-module.exports = {
-  Media: Media,
-  Peer: Peer,
-  PeerConnection: PeerConnection,
-  Signal: Signal,
-  start: start,
-  util: require('./util.js'),
-  datachannel: require('./dataChannel.js')
-}
-
-// Global namespace export
-window.paradone = module.exports
-
 // Additional type definitions
 /**
  * @typedef {Object} Info
+ * @desc Structure used to store meta-data of a media
  * @property {string} url - URL of the media
  * @property {number} parts - Number of parts for the whole media
  * @property {number} size - Size of the file
@@ -78,6 +81,7 @@ window.paradone = module.exports
 
 /**
  * @typedef {Object} Message
+ * @desc Structure used to transmit information across the p2p network
  * @property {string} type - message type
  * @property {string} from - id of the sender
  * @property {string} to - id of the recipient (-1 for broadcast)
@@ -92,5 +96,5 @@ window.paradone = module.exports
 
 /**
  * @typedef {Object.<string, Array.<number>>} Remote
- * Map a peer ID to an array of possessed parts number
+ * @desc Map a peer ID to an array of possessed parts number
  */

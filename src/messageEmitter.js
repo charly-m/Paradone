@@ -15,27 +15,29 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow */
 'use strict'
 
-module.exports = MessageEmitter
+export default MessageEmitter
 
 /**
- * @class Event-like emitter for messages. A message is a JS object
- *        containing a `type` attribute
+ * `Event emitter'-like for messages. A message is a JS object containing a
+ * `type` attribute
  *
- * @constructor
- * @property {Map.<Set.<Function>>} listeners - Set of listeners associated to
- *           message types
+ * @interface MessageEmitter
+ * @property {Map.<Set.<function(Message)>>} listeners - Set
+ *           of listeners associated to message types
  */
 function MessageEmitter() {
-  this.listeners = new Map ()
+  this.listeners = new Map()
 }
 
 /**
  * Adds a listener function to the specified message type.
  *
+ * @function MessageEmitter#on
  * @param {String} messageType - Type of message the listener will handle
  * @param {Function} listener - Method called when the message is emitted
  * @return {MessageEmitter} Current instance for chaining purposes
@@ -53,15 +55,15 @@ MessageEmitter.prototype.on = function(messageType, listener) {
  * Adds a listener function to the specified message type. The listener will be
  * removed after it is called.
  *
+ * @function MessageEmitter#once
  * @param {String} messageType - Type of message the listener will handle
  * @param {Function} listener - Method called when the message is emitted
  * @return {MessageEmitter} Current instance for chaining purposes
 */
 MessageEmitter.prototype.once = function(messageType, listener) {
-  var me = this
-  var autodestroy = function(message) {
+  var autodestroy = message => {
     listener(message)
-    me.removeListener(messageType, autodestroy)
+    this.removeListener(messageType, autodestroy)
   }
   this.on(messageType, autodestroy)
   return this
@@ -70,6 +72,7 @@ MessageEmitter.prototype.once = function(messageType, listener) {
 /**
  * Removes a previously attached listener function.
  *
+ * @function MessageEmitter#removeListener
  * @param {String} messageType - Type of message the listener handles
  * @param {Function} listener - Listener that should be removed
  * @return {MessageEmitter} Current instance for chaining
@@ -84,6 +87,7 @@ MessageEmitter.prototype.removeListener = function(messageType, listener) {
 /**
  * Removes all listeners attached to a given message type.
  *
+ * @function MessageEmitter#removeAllListeners
  * @param {String} messageType - Type of message the listeners handle
  * @return {MessageEmitter} Current instance for chaining
 */
@@ -101,24 +105,29 @@ MessageEmitter.prototype.removeAllListeners = function(messageType) {
 /**
  * Emits a message activating all the listeners attached to the message type
  *
+ * @function MessageEmitter#emit
+ * @function MessageEmitter#post
  * @param {Object} message - Message that should be emitted
+ * @return {MessageEmitter} Current instance for chaining
  */
+MessageEmitter.prototype.post =
 MessageEmitter.prototype.emit = function(message) {
   var type = message.type
   if(typeof type === 'undefined') {
     throw new Error('The message object isn\'t well formed')
   } else if(this.listeners.has(type)) {
-    this.listeners.get(type).forEach(function(listener) {
-      listener.call(this, message)
-    }, this)
+    this.listeners.get(type).forEach(listener => listener.call(this, message))
   }
+  return this
 }
 
 /**
+ * @function MessageEmitter#listenerCount
  * @return {number} the number of listeners added to the emitter
  */
 MessageEmitter.prototype.listenerCount = function() {
   var sum = 0
+  // Map does not have #reduce or #map functions
   this.listeners.forEach(function(value) {
     sum += value.size
   })

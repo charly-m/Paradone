@@ -15,14 +15,14 @@
  *
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @flow weak
  */
-/* @flow weak */
 'use strict'
 
-var localforage = require('localforage')
-var util = require('./util.js')
-
-module.exports = Media
+import localforage from 'localforage'
+import { shuffleArray } from './util.js'
+export default Media
 
 var MediaSource = window.MediaSource || window.WebKitMediaSource
 
@@ -51,12 +51,13 @@ var errorHandler = function(e) {
 }
 
 /**
- * @class Download, store, load and play a media file with local storage and
- *        MediaSource
+ * Download, store, load and play a media file with local storage and
+ * MediaSource
  *
- * @constructor
+ * @class Media
  * @param {string} url - Source URL of the media
- * @param sourceTag The tag where the media should be displayed
+ * @param {HTMLMediaElement} sourceTag - The tag where the media should be
+ *        displayed
  *
  * @property {string} url - Source URL of the media. It's used to identify the
  *           media on the mesh
@@ -81,6 +82,9 @@ function Media(url, sourceTag, autoload) {
 /**
  * Inidiactes how bug should the parts be if the file is splitted locally. We
  * want a size small enough to be transmitted through the DataChannel packet.
+ *
+ * @name Media.chunkSize
+ * @type {number}
  * @see https://code.google.com/p/webrtc/issues/detail?id=2270#c35
  */
 Media.chunkSize = 1000
@@ -90,15 +94,19 @@ Media.chunkSize = 1000
  * peers before it downloads the file from the server. This value can be set
  * trough the parameter of the "media" extension. The value is in ms and the
  * default is 5000 (5 seconds)
+ *
+ * @name Media.downloadTimeout
+ * @type {number}
  */
 Media.downloadTimeout = 5000
 
 /**
  * Apply function on every locally stored medias
  *
- * @param {function} forEachStoredMedia - Callback applied to each file
+ * @function Media.forEachStoredMedia
+ * @param {function} callback - Callback applied to each file
  */
-Media.forEachStoredMedia = function(forEachCallback) {
+Media.forEachStoredMedia = function(callback) {
   // TODO Rename function
   localforage.keys(function(err, keys) {
 
@@ -116,7 +124,7 @@ Media.forEachStoredMedia = function(forEachCallback) {
           // If the file is complete we apply the function
           // TODO Do not create a Media file
           var file = Media.createMediaFromInfo(info, false)
-          forEachCallback(file)
+          callback(file)
         }
       })
     })
@@ -127,6 +135,7 @@ Media.forEachStoredMedia = function(forEachCallback) {
  * Create a media from its meta-data but will not download any missing
  * parts. This function is used when the node plays as seed for stored media
  *
+ * @function Media.createMediaFromInfo
  * @param {Object} info - Meta-data associated to the media
  * @param {boolean} autoplay - Flag if media should be played immediatly after
  *        download
@@ -144,29 +153,34 @@ Media.createMediaFromInfo = function(info, autoplay) {
  * Action done when the file is complete. Here we start playing the media if
  * autoload is activated
  *
- * @param {boolean} value - Is the media complete?
+ * @function Media#isComplete
+ * @param {boolean} bool - Is the media complete?
  */
-Media.prototype.isComplete = function(value) {
-  this.complete = value
-  if(value && this.autoload) {
+Media.prototype.isComplete = function(bool) {
+  this.complete = bool
+  if(bool && this.autoload) {
     this.loadMediasourceFromStoredFile(this.sourceTag)
   }
 }
 
 /**
  * Start the timeout to download the file from the server
+ *
+ * @function Media#startDownloadTimeout
  */
 Media.prototype.startDownloadTimeout = function() {
-  this.sourceDownloadTimeout = window.setTimeout((function() {
+  this.sourceDownloadTimeout = window.setTimeout(function() {
     console.info('No peers offered a connection')
     this.clearDownloadTimeout()
     this.storeDistantFile()
-  }).bind(this), Media.downloadTimeout)
+  }.bind(this), Media.downloadTimeout)
 }
 
 /**
  * When the timeout has been triggered or canceled, the timeout id should be
  * removed too
+ *
+ * @function Media.clearDownloadTimeout
  */
 Media.prototype.clearDownloadTimeout = function() {
   this.sourceDownloadTimeout = null
@@ -176,6 +190,8 @@ Media.prototype.clearDownloadTimeout = function() {
  * Cancel the timeout preventing the peer to request the media to the
  * server. Called when the peer has source offer from other peers and does not
  * need the server anymore.
+ *
+ * @function Media#cancelServerDownload
  */
 Media.prototype.cancelServerDownload = function() {
   console.info('Download the file from peer')
@@ -185,6 +201,8 @@ Media.prototype.cancelServerDownload = function() {
 
 /**
  * Get and store the file from the distant server to the local storage
+ *
+ * @function Media#storeDistantFile
  */
 Media.prototype.storeDistantFile = function() {
   return this.getRemoteFile(this.url, 'arraybuffer')
@@ -201,6 +219,7 @@ Media.prototype.storeDistantFile = function() {
  * @param {number} howMany - How many missing parts should be returned
  * @return {Array.<Array.<string, number>>} Array of tuples containing [remote
  *         id, part number]
+ * @function Media#nextPartsToDownload
  */
 Media.prototype.nextPartsToDownload = function(howMany) {
   //TODO Generators
@@ -218,7 +237,7 @@ Media.prototype.nextPartsToDownload = function(howMany) {
    */
   var selectPeer = function(remotes, partNumber) {
     // Get all random peers
-    var remoteIds = util.shuffleArray(Object.keys(remotes))
+    var remoteIds = shuffleArray(Object.keys(remotes))
     // Take the first peer which has the desired part
     for(var j = 0; j < remoteIds.length; ++j) {
       var id = remoteIds[j]
@@ -254,6 +273,7 @@ Media.prototype.nextPartsToDownload = function(howMany) {
  *
  * @param {number} partNumber
  * @return {boolean} True if the peer has the part
+ * @function Media#peerHasPart
  */
 Media.prototype.peerHasPart = function(partNumber) {
   return this.info.available.indexOf(partNumber) !== -1
@@ -266,6 +286,7 @@ Media.prototype.peerHasPart = function(partNumber) {
  * @param {string} remotePeer - Which remote peer should be checked
  * @param {number} partNumber - Which part should be checked
  * @return {boolean} True if the remote peer seems to possess the part
+ * @function Media#remoteHasPart
  */
 Media.prototype.remoteHasPart = function(remotePeer, partNumber) {
   var remote = this.info.remote[remotePeer]
@@ -282,6 +303,7 @@ Media.prototype.remoteHasPart = function(remotePeer, partNumber) {
  *
  * @param {string} fileUrl - url of the file to be downloaded
  * @return {Promise} a new Promise holding the file's URL and ArrayBuffer
+ * @function Media#getRemoteFile
  */
 Media.prototype.getRemoteFile = function(fileUrl, responseType) {
   responseType = responseType || 'blob'
@@ -310,6 +332,7 @@ Media.prototype.getRemoteFile = function(fileUrl, responseType) {
  *        limit
  * @param {ArrayBuffer} fileBuffer - Buffer representing the file
  * @return {Promise} a bunch of Promises
+ * @function Media#storeFileBuffer
  */
 Media.prototype.storeFileBuffer = function(chunkSize, fileBuffer) {
   var parts = Math.ceil(fileBuffer.byteLength / chunkSize)
@@ -335,6 +358,7 @@ Media.prototype.storeFileBuffer = function(chunkSize, fileBuffer) {
 /**
  * Define the file's information and store it locally
  * @return {Promise} A promise to store the info
+ * @function Media#buildInfoFromLocal
  */
 Media.prototype.buildInfoFromLocal = function(size, nbrParts) {
   var info = {
@@ -359,6 +383,7 @@ Media.prototype.buildInfoFromLocal = function(size, nbrParts) {
  * @param {Info} info - media's meta-data
  * @param {string} from - id of the remote peer
  * @return {Promise} A promise to store the info
+ * @function Media#buildInfoFromRemote
  */
 Media.prototype.buildInfoFromRemote = function(info, from) {
   // Add local information
@@ -399,7 +424,8 @@ Media.prototype.buildInfoFromRemote = function(info, from) {
  * Update the info of the media and store it in local storage
  *
  * @param {Info} info - media's meta-data
- * return {Promise}
+ * @return {Promise}
+ * @function Media#storeInfo
  */
 Media.prototype.storeInfo = function(info) {
   return localforage
@@ -414,6 +440,7 @@ Media.prototype.storeInfo = function(info) {
  *
  * @param {number} partNumber
  * @param {Array} data - The part of the media we need to store
+ * @function Media#storeChunk
  */
 Media.prototype.storeChunk = function(partNumber, data) {
 
@@ -435,9 +462,7 @@ Media.prototype.storeChunk = function(partNumber, data) {
 
   if(nbrAvail === this.info.parts) {
     console.info('Last part of the media has been stored')
-    retour.then((function() {
-      this.isComplete(true)
-    }).bind(this))
+    retour.then(() => this.isComplete(true))
   }
 
   return retour
@@ -447,6 +472,7 @@ Media.prototype.storeChunk = function(partNumber, data) {
  * Get media information from local storage
  *
  * @return {Promise} Promise returning the info object as firest parameter
+ * @function Media#getInfo
  */
 Media.prototype.getInfo = function() {
   return localforage
@@ -461,6 +487,7 @@ Media.prototype.getInfo = function() {
  *
  * @param {number} partNumber - The number of the desired chunk
  * @return {Promise} Prmosie returning the chunk as first parameter
+ * @function Media#getChunk
  */
 Media.prototype.getChunk = function(partNumber) {
   return localforage
@@ -473,8 +500,9 @@ Media.prototype.getChunk = function(partNumber) {
 /**
  * Load a media from localstorage in a HTMLMediaElement with Media Source
  *
- * @params {HTMLMediaElement} video - Video tag where the file should be played
- * @params {string} fileName - the name of the local file (most likely it's url)
+ * @param {HTMLMediaElement} video - Video tag where the file should be played
+ * @param {string} fileName - the name of the local file (most likely it's url)
+ * @function Media#loadMediasourceFromStoredFile
  */
 Media.prototype.loadMediasourceFromStoredFile = function(video) {
 
