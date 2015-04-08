@@ -8,37 +8,34 @@
     "type": "git",
     "url": "git://github.com/Paradone/Paradone.git"
   },
-  "main": "src/main.js",
+  "main": "src/index.js",
   "scripts": {
-    "build": "gulp build",
+    "build": "mkdir dist 2>/dev/null;browserify src/index.js | uglifyjs -cm --screw-ie8 --preamble \"$(cat ./license.preamble.js)\" -o ./dist/paradone.min.js",
     "clean": "find . -type f -name \"#*#\" -o -name \"*~\" -delete; rm -rf ./dist ./doc",
-    "debug": "gulp debug",
+    "debug": "mkdir dist 2>/dev/null;watchify src/index.js -d -o dist/paradone.js -v",
     "doc": "jsdoc -P ./package.json -d ./doc -r ./src",
-    "test": "gulp test",
-    "watch": "gulp watch"
+    "help": "echo \"usage: npm run <command>\n\n  build   Concatenate and minify the script\n  clean   Remove temporary files and generated builds and doc\n  debug   Auto-build on save with source-map support\n  doc     Generate the documentation of the project in ./doc\n  help    Display usage\n  test    Run the tests on the source files\n  watch   Run tests on every file change\n\"",
+    "start": "npm run help",
+    "test": "./node_modules/karma/bin/karma start karma.conf.js",
+    "watch": "./node_modules/karma/bin/karma start karma.conf.js --port 9877 --autoWatch --singleRun false"
   },
   "dependencies": {
-    "localforage": "~1.1.1"
+    "localforage": "1.2.X"
   },
   "devDependencies": {
-    "browserify": "^6.3.3",
-    "gulp": "^3.8.10",
-    "gulp-concat": "^2.4.2",
-    "gulp-strip-line": "0.0.1",
-    "gulp-uglify": "^1.1.0",
-    "jsdoc": "^3.3.0-beta1",
-    "karma": "^0.12.24",
-    "karma-browserify": "^3.0.1",
-    "karma-chai": "^0.1.0",
-    "karma-chrome-launcher": "^0.1.5",
-    "karma-coverage": "^0.2.6",
-    "karma-firefox-launcher": "^0.1.4",
-    "karma-mocha": "^0.1.9",
-    "karma-mocha-reporter": "^0.3.1",
-    "karma-notify-reporter": "^0.1.1",
-    "karma-sinon": "^1.0.3",
-    "vinyl-buffer": "^1.0.0",
-    "vinyl-source-stream": "^1.0.0",
-    "watchify": "^2.1.1"
+    "browserify": "9.X.X",
+    "jsdoc": "^3.3.0-beta3",
+    "karma": "0.12.X",
+    "karma-browserify": "4.X.X",
+    "karma-chai": "0.1.X",
+    "karma-chrome-launcher": "0.1.X",
+    "karma-coverage": "0.2.X",
+    "karma-firefox-launcher": "0.1.X",
+    "karma-mocha": "0.1.X",
+    "karma-mocha-reporter": "1.X.X",
+    "karma-notify-reporter": "0.1.X",
+    "karma-sinon": "1.X.X",
+    "uglify-js": "2.X.X",
+    "watchify": "3.X.X"
   }
 }

@@ -47,7 +47,7 @@ module.exports = function(config) {
 
     // enable / disable watching file and executing tests whenever any file
     // changes
-    autoWatch: true,
+    autoWatch: false,
 
     // Tells Karma how long to wait (in milliseconds) after any changes have
     // occurred before starting the test process again.
@@ -59,6 +59,6 @@ module.exports = function(config) {
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: false
+    singleRun: true
   });
 };
