@@ -25,6 +25,7 @@ import PeerConnection from './peerConnection.js'
 import Signal from './signal.js'
 import * as util from './util.js'
 import * as extensions from './extensions/list.js'
+import { contains, partition } from 'ramda'
 export default Peer
 
 /**
@@ -59,6 +60,7 @@ var RTCSessionDescription =
  * @property {Map.<Set.<external:RTCIceCandidate>>} icecandidates - Store
  *           ICECandidates for a connection if it's not active yet
  * @property {number} ttl - `Time To Live' of a message
+ * @property {Array.<Message>} queue - Message queue
  */
 function Peer(options) {
   if(!(this instanceof Peer)) {
@@ -84,7 +86,11 @@ function Peer(options) {
   this.connections = new Map()
   this.icecandidates = new Map()
   this.ttl = Peer.ttl
+  this.queue = []
+  this.previousTimestamp = Infinity
+
   this.connections.set('signal', signal)
+  window.setInterval(processQueue.bind(this), Peer.queueTimeout)
 
   // Message Handlers
   this.on('offer', onoffer)
@@ -92,6 +98,7 @@ function Peer(options) {
   this.on('icecandidate', onicecandidate)
   this.on('request-peer', onrequestpeer)
   this.on('first-view', onfirstview)
+  this.on('connected', onconnected)
 }
 
 Peer.prototype = Object.create(MessageEmitter.prototype)
@@ -105,53 +112,74 @@ Peer.prototype = Object.create(MessageEmitter.prototype)
 Peer.ttl = 3
 
 /**
+ * Queue check timeout
+ * @name Peer.queueTimeout
+ * @type {number}
+ */
+Peer.queueTimeout = 1000
+
+/**
+ * @param {Array.<DataConnection>} connections - Available connections
+ * @param {Message} message - Message to be broadcasted
+ */
+var broadcast = function(connections, message) {
+  // Broadcast
+  var targets = 0
+  var from = message.forwardBy
+
+  // Get all open connections which have not received the message yet
+  connections.forEach(function(connection, peerId) {
+    // Do not send to signal and nodes that already had this message
+    // Do not send the message to nodes that forwarded it
+    if(peerId !== 'signal' &&
+       from.indexOf(peerId) === -1 &&
+       connection.status === 'open') {
+      connection.send(message)
+      targets += 1
+    }
+  })
+
+  if(targets === 0 && connections.has('signal')) {
+    // Not enough neighbours for broadcast, use signal system
+    connections.get('signal').send(message)
+  }
+}
+
+/**
  * Use the connections to send a message to a remote peer.
  * Two solutions: The peer has the recipient as neighbour or we need to
  * broadcast the message.
  *
  * @function Peer#send
  * @param {Message} message - information to be sent
+ * @param {Function} [callback] - Function executed when the timeout is reached
  */
-Peer.prototype.send = function(message) {
-  // TODO Validate message construction
-  var messageValidator = function(msg) {
-    var params = ['type', 'from', 'to', 'ttl', 'forwardBy']
-    params.forEach(function(param) {
-      if(!msg.hasOwnProperty(param) || typeof msg[param] === 'undefined') {
-        throw new Error('Message#' + param + ' is missing')
-      }
-    })
-    return true
-  }
+Peer.prototype.send = function(message, callback) {
 
-  if(!messageValidator(message)) {
-    // TODO Never called
+  if(!util.messageIsValid(message)) {
     throw new Error('Message object is invalid')
   }
 
   var to = message.to
-  var from = message.forwardBy
 
   if(this.connections.has(to) && this.connections.get(to).status === 'open') {
     // Node is already connected to desired recipient
     this.connections.get(to).send(message)
-  } else { // Broadcast
-    var targets = 0
-    // Get all open connections which have not received the message yet
-    this.connections.forEach(function(connection, peerId) {
-      // Do not send to signal and nodes that already had this message
-      // Do not send the message to nodes that forwarded it
-      if(peerId !== 'signal' &&
-         from.indexOf(peerId) === -1 &&
-         connection.status === 'open') {
-        connection.send(message)
-        targets += 1
-      }
-    })
-
-    if(targets === 0 && this.connections.has('signal')) { //TODO Magic number
-      // Not enough neighbours for broadcast, use signal system
-      this.connections.get('signal').send(message)
+  } else if(Array.isArray(message.route) &&
+            this.connections.has(message.route[0])) {
+    // The message knows some route
+    // TODO Replace with Cord like lookup
+    to = message.route.shift()
+    this.connections.get(to).send(message)
+  } else {
+    // Its either a direct or a queuable message
+    var forwardableTypes = ['icecandidate', 'request-peer', 'offer', 'answer']
+    if(contains(message.type, forwardableTypes)) {
+      broadcast(this.connections, message)
+    } else {
+      var timestamp = Date.now()
+      this.queue.push({message, callback, timestamp})
+      this.requestPeer(message.to)
     }
   }
 }
@@ -160,12 +188,14 @@ Peer.prototype.send = function(message) {
  * Send a new request for peers to everyone
  *
  * @function Peer#requestPeer
+ * @param {string} [to='-1'] - To whom the node needs to open a connection. '-1'
+ *        means no particular peer
  */
-Peer.prototype.requestPeer = function() {
+Peer.prototype.requestPeer = function(to='-1') {
   this.send({
     type: 'request-peer',
     from: this.id,
-    to: -1,
+    to: to,
     ttl: this.ttl,
     forwardBy: []
   })
@@ -183,6 +213,7 @@ Peer.prototype.respondTo = function(message, answer) {
   answer.to = message.from
   answer.ttl = this.ttl
   answer.forwardBy = []
+  answer.route = message.forwardBy
   this.send(answer)
 }
 
@@ -326,4 +357,53 @@ var onfirstview = function(message) {
   this.id = message.data.id
   this.view = message.data.view
   this.emit({type: 'signal-ready', from: this.id, to: this.id})
+}
+
+/**
+ * Triggered when a DataChannel is openned with a remote peer
+ *
+ * @param {Message} message - The first view received from the server
+ * @param {string} message.from - id of the remote node
+ */
+var onconnected = function(message) {
+  var remote = message.from
+  var [messageToSend, rest] = partition(
+    (elt => elt.message.to === remote),
+    this.queue)
+  messageToSend.forEach(elt => this.send(elt.message))
+  this.queue = rest
+}
+
+/**
+ * Check if messages have reached their timeout and executes their callbacks
+ */
+var processQueue = function() {
+
+  // Divide messages depending on conection status (can be sent or not)
+  var [messagesToSend, messagesToAge] = partition(elt => {
+    // Check if connection is available
+    var message = elt.message
+    return this.connections.has(message.to) &&
+      this.connections.get(message.to).status === 'open'
+  }, this.queue)
+
+  // Send the messages with connection available
+  messagesToSend.forEach(elt => this.send(elt.message))
+
+  var lastTimestamp = this.previousTimestamp
+  // Divide messages
+  var [messagesToTimeout, messagesToEnqueue] = partition(elt => {
+    return elt.message.hasOwnProperty('timeout') &&
+      typeof elt.message.timeout === 'number' &&
+      lastTimestamp - elt.timestamp > elt.message.timeout
+  }, messagesToAge)
+
+  messagesToTimeout.forEach(elt => {
+    if(typeof elt.callback !== 'undefined') {
+      elt.callback()
+    }
+  })
+
+  this.queue = messagesToEnqueue
+  this.previousTimestamp = Date.now()
 }

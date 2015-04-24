@@ -1,3 +1,4 @@
+/* global sinon expect */
 'use strict'
 
 var Peer = require('../src/peer.js')
@@ -40,7 +41,7 @@ describe('Peer', function() {
 
       var testParams = [
         ['should be from A', 'from', peerA.id],
-        ['should be for everyone', 'to', -1],
+        ['should be for everyone', 'to', '-1'],
         ['should be a request', 'type', 'request-peer'],
         ['should not been forwarded', 'forwardBy', []],
         ['should have default ttl', 'ttl', 3]
@@ -62,7 +63,7 @@ describe('Peer', function() {
           if('offer' === message.type) {
             messages.offerFromB = message
             done()
-          } else if('icecandidate') {
+          } else if('icecandidate' === message.type) {
             messages.iceFromB = message
           }
         })
@@ -253,25 +254,46 @@ describe('Peer', function() {
           to: peers.B.id,
           data: 'AtoB',
           ttl: 3,
-          forwardBy: [],
+          forwardBy: []
         })
       })
 
-      it('C receive the test request (2 hops)', function(done) {
-        peers.C.on('test', function(message) {
+      it('C receive the peer request (2 hops)', function(done) {
+        // Only request-peer, icecandidate, offer and answer are forwarded
+        peers.C.removeAllListeners('request-peer')
+        peers.C.on('request-peer', function(message) {
           expect(message.forwardBy.length).to.be.equal(1)
           expect(message.ttl).to.be.equal(2)
           done()
         })
         peers.A.send({
-          type: 'test',
+          type: 'request-peer',
           from: peers.A.id,
           to: peers.C.id,
           data: 'AtoC',
           ttl: 3,
-          forwardBy: [],
+          forwardBy: []
         })
       })
+
+      it('A stores message, requests connection and transmit message', function(done) {
+        peers.C.on('queuetest', function() {
+          expect(peers.A.queue).to.be.empty
+          done()
+        })
+        expect(peers.A.queue).to.be.empty
+        peers.A.send({
+          type: 'queuetest',
+          from: peers.A.id,
+          to: peers.C.id,
+          data: 'AtoC2',
+          ttl: 3,
+          forwardBy: []
+        })
+        expect(peers.A.queue).to.have.length(1)
+        expect(peers.A.queue[0].message.type).to.be.eq('queuetest')
+      })
+
     })
 
     describe('One node connecting requesting multiple peers', function() {
@@ -344,6 +366,85 @@ describe('Peer', function() {
           expect(peers.C.connections.get('B').status).to.be.equal('open')
         })
       })
+    })
+  })
+
+  describe('Timeout messages', function() {
+    var peer = new Peer(options)
+    peer.id = '1'
+    peer.connections.delete('signal')
+
+    it('should store non-connection related messages', function() {
+      peer.send({
+        type: 'offer',
+        from: peer.id,
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'request-peer',
+        from: peer.id,
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'answer',
+        from: peer.id,
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      peer.send({
+        type: 'icecandidate',
+        from: peer.id,
+        to: 'a',
+        data: '',
+        ttl: 3,
+        forwardBy: []
+      })
+      expect(peer.queue).to.empty
+      peer.send({
+        type: 'test',
+        from: peer.id,
+        to: 'a',
+        data: ''
+      })
+      expect(peer.queue).to.have.length(1)
+      peer.send({
+        type: 'test2',
+        from: peer.id,
+        to: 'a',
+        data: ''
+      })
+      expect(peer.queue).to.have.length(2)
+    })
+
+    it('should drop messages after timeout and executes the callbacks', function(done) {
+      var clock = sinon.useFakeTimers()
+      peer = new Peer(options)
+      peer.id = '1'
+      peer.connections.delete('signal')
+
+      peer.send({
+        type: 'queuetest',
+        from: peer.id,
+        to: peer.id,
+        data: '',
+        timeout: 1500
+      }, done)
+
+      expect(peer.queue).to.have.length(1)
+      clock.tick(1000)
+      expect(peer.queue).to.have.length(1)
+      clock.tick(1000)
+      expect(peer.queue).to.have.length(0)
+
+      clock.restore()
     })
   })
 

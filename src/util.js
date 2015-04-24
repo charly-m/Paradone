@@ -20,6 +20,7 @@
  */
 'use strict'
 
+import { contains } from 'ramda'
 /**
  * @module util
  */
@@ -89,4 +90,103 @@ export function shuffleArray(array) {
  */
 export function shallowSort(sortFunction, array) {
   return array.slice().sort(sortFunction)
+}
+
+/**
+ * Returns the URL of the a file from a relative path. Can be relative to the
+ * root of the website if the path starts with '/' otherwise it will be relative
+ * to the current file. It is assumed that URL ending in '/' are for directories
+ *
+ * @param {string} pathTofile - Relative path for the file
+ * @return {string} Full URL
+ */
+export function getURL(pathToFile) {
+  var path = window.location.pathname
+  var origin = window.location.origin
+
+  if(pathToFile.charAt(0) === '/') {
+    return origin + pathToFile
+  }
+
+  if(path.charAt(path.length - 1) !== '/') {
+    path = path.replace(/[^/]*$/, '')
+  }
+
+  if(pathToFile.slice(0, 2) === './') {
+    pathToFile = pathToFile.slice(2)
+  }
+
+  return origin + path + pathToFile
+}
+
+/**
+ * Return the result of a XHR as a promise. If the XHR succeed, the resolve
+ * function of the promise will have the file requested as first parameter.
+ *
+ * @param {string} fileUrl - url of the file to be downloaded
+ * @param {string} [responseType='blob'] - Type returned by the server
+ * @param {number} [range=''] - If a range should be requested instead of the
+ *        entire file
+ * @return {Promise} a new Promise holding the file's URL and ArrayBuffer
+ */
+export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
+  const DEFAULT_STATUS = 200
+  const RANGE_STATUS = 206
+
+  return new Promise(function(resolve, reject) {
+    var status
+    var xhr = new XMLHttpRequest()
+    xhr.open('GET', fileUrl, true)
+    xhr.responseType = responseType
+
+    if(range !== '') {
+      xhr.setRequestHeader('Range', 'bytes=' + range)
+      status = RANGE_STATUS
+    } else {
+      status = DEFAULT_STATUS
+    }
+
+    xhr.onreadystatechange = function() {
+      if(this.readyState === this.DONE) {
+        if(this.status === status) {
+          resolve(this.response)
+        } else {
+          console.error('Download of ' + fileUrl + ' failed')
+          reject(this)
+        }
+      }
+    }
+
+    xhr.send()
+  })
+}
+
+/**
+ * @throw {Error}
+ */
+export function messageIsValid(msg) {
+  var check = function(params) {
+    return params.map(param => {
+      if(!msg.hasOwnProperty(param) || typeof msg[param] === 'undefined') {
+        console.error('Message#' + param + ' is missing')
+        return false
+      }
+      return true
+    }).reduce(((acc, elt) => acc && elt), true)
+  }
+
+  var defaultParams = ['type', 'from', 'to']
+  var additionalParams = [
+    { types: ['request-peer', 'answer', 'icecandidate', 'offer'],
+      params: ['ttl', 'forwardBy']}
+  ]
+  var originals = check(defaultParams)
+  var additionals = additionalParams.map(add => {
+    if(contains(msg.type, add.types)) {
+      return check(add.params)
+    }
+    return true
+  }).reduce(((acc, elt) => acc && elt), true)
+
+  return originals && additionals
 }
