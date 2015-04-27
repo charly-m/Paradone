@@ -20,7 +20,10 @@
  */
 'use strict'
 
-import Media from '../media.js'
+import Media from './media.js'
+import { getURL, getRemoteFile } from '../util.js'
+import { filter, forEach, pipe } from 'ramda'
+export default MediaPeer
 
 /**
  * Set a new media we need to leech
@@ -28,25 +31,24 @@ import Media from '../media.js'
  * @function addMedia
  * @memberof MediaPeer
  * @memberof paradone.MediaPeer
- * @param {string} src - URL for the fie
+ * @param {string} sourceURL - URL for the file
+ * @param {string} metafile - URL for the metadata
  * @param {HTMLMediaElement} tag - Element in which the media should be played
  * @param {boolean} autoload - Whether or not the file should be played when
  *        the download is over
  */
-var addMedia = function(src, tag, autoload) {
-  if(!this.files.has(src)) {
-    // Track the file
-    var media = new Media(src, tag, autoload)
+var addMedia = function(sourceURL, metaURL, tag, autoload) {
+  // Track the file
+  console.debug('add media')
+  var media = new Media(sourceURL, metaURL, tag, autoload)
+  this.selfPost({
+    type: 'request-metadata',
+    data: metaURL,
+    url: sourceURL
+  })
 
-    // TODO Check local storage?
-    this.on('signal-ready', this.requestPeer.bind(this, src))
+  this.files.set(sourceURL, media)
 
-    // If no peer give answers within 5 seconds the file will be downloaded
-    // directly from the server
-    media.startDownloadTimeout()
-
-    this.files.set(src, media)
-  }
   // TODO Else could be a new tag for the media
 }
 
@@ -61,10 +63,24 @@ var addMedia = function(src, tag, autoload) {
  * @param {number} nbParts - number of parts to be returned
  */
 var askForNextParts = function(media, nbParts) {
-  media.nextPartsToDownload(nbParts)
-    .forEach(function sendRequest(info) {
-      var remote = info[0]
-      var partNumber = info[1]
+  var postPart = peer => partNumber => part => {
+    peer.selfPost({
+      type: 'part',
+      data: part,
+      url: media.url,
+      number: partNumber
+    })
+  }
+
+  var choices = media.nextPartsToDownload(nbParts)
+  choices.forEach(choice => {
+    var [remote, partNumber] = choice
+    var partRange = media.getRangeOfPart(partNumber)
+
+    if(remote === 'source') { // Download from server
+      getRemoteFile(media.url, 'arraybuffer', partRange)
+        .then(postPart(this)(partNumber))
+    } else { // Download from p2p network
       console.info('Asking for part', partNumber, 'to peer', remote)
       this.send({
         type: 'request-part',
@@ -73,10 +89,14 @@ var askForNextParts = function(media, nbParts) {
         url: media.url,
         ttl: this.ttl,
         forwardBy: [],
-        number: partNumber
-      })
-      media.pendingParts.push(partNumber)
-    }, this)
+        number: partNumber,
+        timeout: 3000
+      }, () => getRemoteFile(media.url, 'arraybuffer', partRange)
+                .then(postPart(this)(partNumber)))
+    }
+
+    media.parts[partNumber].status = 'pending'
+  })
 }
 
 /**
@@ -102,65 +122,77 @@ var onconnected = function(message) {
 }
 
 /**
- * Store the information of the file and updates the information on the
- * mediafile
- *
- * @param {Message} message - An info type message containing meta-data about
- *        the media file the node needs
  */
-var oninfo = function(message) {
-  var info = message.data
+var onmetadata = function(message) {
+  console.debug('onmetadata')
+  var meta = message.data
   var url = message.url
-  var from = message.from
   var media = this.files.get(url)
+  media.setMetadata(meta)
 
-  media.buildInfoFromRemote(info, from)
-
-  // If the remote peer has parts
-  if(info.available.length > 0) {
-    media.cancelServerDownload()
-  }
-
-  // Start downloading parts
-  this.askForNextParts(media, 3) // TODO Magic Number
+  // We can start downloading the head
+  this.selfPost({
+    type: 'request-head',
+    data: '',
+    url: url
+  })
 }
 
 /**
- * paradone.Message containing a part of the desired media
+ */
+var onrequestmetadata = function(message) {
+  console.debug('onrequestmetadata')
+  var metaURL = message.data
+  getRemoteFile(metaURL, 'json').then(meta => {
+    meta.url = metaURL
+    this.selfPost({
+      type: 'metadata',
+      data: meta,
+      url: message.url
+    })
+  })
+}
+
+var onhead = function(message) {
+  console.debug('onhead')
+  var head = message.data
+  var url = message.url
+  var media = this.files.get(url)
+
+  media.setHead(head)
+
+  // We have the head, we can request random parts now
+  askForNextParts.call(this, media, MediaPeer.concurrentParts)
+}
+
+var onrequesthead = function(message) {
+  console.debug('onrequesthead')
+
+  var url = message.url
+  var media = this.files.get(url)
+
+  getRemoteFile(url, 'arraybuffer', media.getRangeOfHead())
+    .then(head => this.selfPost({
+      type: 'head',
+      url: url,
+      data: head
+    }))
+}
+/**
+ * Message containing a part of the desired media
  *
  * @param {Message} message - A part type message containing a chunk of media
  */
 var onpart = function(message) {
-  console.assert(
-    Array.isArray(message.data),
-    'paradone.Message type:part .data is not an array')
-  console.assert(
-    this.files.has(message.url),
-    'paradone.Message type:part received for an undesired file')
+  console.assert(this.files.has(message.url),
+    'Message type:part received for an undesired file')
 
-  // Store the part
   var media = this.files.get(message.url)
-  // TODO Store parts as pure array ?
-  media.storeChunk(message.number, new Uint8Array(message.data))
+  media.append(message.number, message.data)
+  // TODO media.storeChunk(message.number, new Uint8Array(message.data))
+
   // Ask for a new part
   this.askForNextParts(media, 1)
-}
-
-/**
- * The remote node request the info of a file (size, number of parts). We
- * return this information and the local parts we have in case he's interested
- *
- * @param {Message} message - A request for information about a media
- */
-var onrequestinfo = function(message) {
-  if(this.files.has(message.url) &&
-     this.files.get(message.url).info !== undefined) {
-    this.respondTo(message, {
-      type: 'info',
-      data: this.files.get(message.url).info,
-      url: message.url
-    })
-  }
 }
 
 /**
@@ -194,30 +226,71 @@ var onrequestpart = function(message) {
 }
 
 /**
+ * Parse the document and get all videos elements
+ */
+var parseDocument = function() {
+  // Check the video tag (not a real array)
+  var videos = document.getElementsByTagName('video')
+  var load = pipe(
+    filter(video => video.hasAttribute('data-meta')),
+    forEach(video => {
+      var source = video.src
+      var metaURL = getURL(video.getAttribute('data-meta'))
+      // DEBUG Prevent firefox from downloading the video directly
+      video.removeAttribute('src')
+      this.addMedia(source, metaURL, video, true)
+    })
+  )
+  load(videos)
+}
+
+/**
  * A media peer implements the functions used to share and retrieve media files
  * on the mesh
  *
  * @mixin MediaPeer
+ * @param {Object} parameters
+ * @param {number} downloadTimeout - Timeout after which the media should be
+ *        downloaded from the server
+ * @param {number} concurrentParts - Number of parts that should be downloaded
+ *        simultaneously by the peer
  * @property {Media} files - Map of files indexed by url
  */
-export default function MediaPeer(parameters) {
+function MediaPeer(parameters) {
+  // Start the script on each connection
   this.on('connected', onconnected)
-  this.on('request-info', onrequestinfo)
-  this.on('info', oninfo)
+
+  this.on('request-metadata', onrequestmetadata)
+  this.on('metadata', onmetadata)
+  this.on('request-head', onrequesthead)
+  this.on('head', onhead)
   this.on('request-part', onrequestpart)
   this.on('part', onpart)
 
   this.files = new Map()
   this.askForNextParts = askForNextParts
   this.addMedia = addMedia
+  this.parseDocument = parseDocument
 
-  // Check out if there are any local files we can seed
-  var peer = this
-  Media.forEachStoredMedia((function(mediafile) {
-    peer.files.set(mediafile.url, mediafile)
-  }))
+  // TODO (Storage) Check out if there are any local files we can seed
+  // MediaStore.forEachStoredMedia(media => this.files.set(media.url, media))
 
   if(parameters.hasOwnProperty('downloadTimeout')) {
     Media.downloadTimeout = parameters.downloadTimeout
   }
+
+  if(parameters.hasOwnProperty('concurrentParts')) {
+    MediaPeer.concurrentParts = parameters.concurrentParts
+  }
+
+  if(parameters.hasOwnProperty('autoload') && parameters.autoload) {
+    this.parseDocument()
+  }
 }
+
+/**
+ * How many parts the peer should download in parallel
+ * @name MediaPeer.concurrentParts
+ * @type {number}
+ */
+MediaPeer.concurrentParts = 3

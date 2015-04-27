@@ -16,7 +16,7 @@ var buildInfo = function(nbParts, available, remote) {
 describe('Media', function() {
 
   beforeEach(function(done) {
-    media = new Media(url, null, false)
+    media = new Media(url, null, null, false)
     done()
   })
 

@@ -21,7 +21,6 @@
 'use strict'
 
 import * as datachannel from './datachannel.js'
-import Media from './media.js'
 import Peer from './peer.js'
 import PeerConnection from './peerConnection.js'
 import Signal from './signal.js'
@@ -30,7 +29,6 @@ import * as util from './util.js'
 // Export for the `paradone` module
 export default {
   datachannel,
-  Media,
   Peer,
   PeerConnection,
   Signal,
@@ -39,33 +37,15 @@ export default {
 }
 
 /**
- * Find every video tag and start downloading and sharing them through the mesh
+ * Default method initialising a new peer
  *
  * @function start
  * @param {Object} opts
  */
 function start(opts) {
   document.addEventListener('DOMContentLoaded', function() {
-    var videos = document.getElementsByTagName('video')
-    for(var i = 0; i < videos.length; ++i) {
-      parseVideoTag(opts, videos[i])
-    }
+    new Peer(opts)
   })
-}
-
-/**
- * Finds all video tag and try to find the source file on the mesh
- *
- * @param {Object} opts
- * @param {HTMLMediaElement} videoTag
- */
-function parseVideoTag(opts, videoTag) {
-  var source = videoTag.src
-  videoTag.removeAttribute('src')
-  var peer = new Peer(opts)
-  peer.addMedia(source, videoTag, true)
-  // DEBUG
-  window.peer = peer
 }
 
 // Additional type definitions

@@ -121,7 +121,7 @@ MessageEmitter.prototype.removeAllListeners = function(messageType) {
 MessageEmitter.prototype.post =
   MessageEmitter.prototype.emit = function(message) {
     var type = message.type
-    if(typeof type === 'undefined') {
+    if(typeof type === 'undefined') { // TODO util validation
       throw new Error('The message object isn\'t well formed')
     } else if(this.listeners.has(type)) {
       this.listeners.get(type).forEach(listener => listener.call(this, message))
@@ -140,4 +140,14 @@ MessageEmitter.prototype.listenerCount = function() {
     sum += value.size
   })
   return sum
+}
+
+/**
+ * Dispatch a message to itself
+ *
+ * @param {Message} message
+ */
+MessageEmitter.prototype.selfPost = function(message) {
+  message.from = message.to = this.id
+  this.post(message)
 }
