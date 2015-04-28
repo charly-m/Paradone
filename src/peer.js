@@ -125,7 +125,7 @@ Peer.queueTimeout = 1000
 var broadcast = function(connections, message) {
   // Broadcast
   var targets = 0
-  var from = message.forwardBy
+  var from = [message.from, ...message.forwardBy]
 
   // Get all open connections which have not received the message yet
   connections.forEach(function(connection, peerId) {
@@ -162,7 +162,10 @@ Peer.prototype.send = function(message, callback) {
 
   var to = message.to
 
-  if(this.connections.has(to) && this.connections.get(to).status === 'open') {
+  if(to === this.id) {
+    // Message for itself
+    this.dispatchMessage(message)
+  } if(this.connections.has(to) && this.connections.get(to).status === 'open') {
     // Node is already connected to desired recipient
     this.connections.get(to).send(message)
   } else if(Array.isArray(message.route) &&
@@ -256,7 +259,7 @@ var onanswer = function(message) {
   this.connections.get(from).setRemoteDescription(
     answer,
     function() {}, // Do nothing, we have to wait for the datachannel to open
-    util.error(new Error()))
+    e => { throw e })
 }
 
 /**
@@ -281,7 +284,7 @@ var onicecandidate = function(message) {
     this.connections.get(from).addIceCandidate(
       candidate,
       function() {},
-      util.error(new Error()))
+      e => { throw e })
   }
 }
 
@@ -306,7 +309,7 @@ var onoffer = function(message) {
         peerConnection.addIceCandidate(
           candidate,
           successCallback,
-          util.error(new Error()))
+          e => { throw e })
       }, this)
       this.icecandidates.delete(remotePeer)
     }
@@ -356,7 +359,11 @@ var onfirstview = function(message) {
   console.info('First view received from server')
   this.id = message.data.id
   this.view = message.data.view
-  this.emit({type: 'signal-ready', from: this.id, to: this.id})
+  this.dispatchMessage({
+    from: this.id,
+    to: this.id,
+    type: 'signal-ready'
+  })
 }
 
 /**

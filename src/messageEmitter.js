@@ -111,15 +111,14 @@ MessageEmitter.prototype.removeAllListeners = function(messageType) {
 }
 
 /**
- * Emits a message activating all the listeners attached to the message type
+ * Disptaches the message activating all the listeners of the instance attached
+ * to the message type
  *
- * @function MessageEmitter#emit
- * @function MessageEmitter#post
+ * @function MessageEmitter#dispatchMessage
  * @param {Object} message - Message that should be emitted
  * @return {MessageEmitter} Current instance for chaining
  */
-MessageEmitter.prototype.post =
-  MessageEmitter.prototype.emit = function(message) {
+MessageEmitter.prototype.dispatchMessage = function(message) {
     var type = message.type
     if(typeof type === 'undefined') { // TODO util validation
       throw new Error('The message object isn\'t well formed')
@@ -143,11 +142,12 @@ MessageEmitter.prototype.listenerCount = function() {
 }
 
 /**
- * Dispatch a message to itself
+ * Transmit a message so it can be dispatched to another (possibly distant)
+ * MessageEmitter
  *
+ * @function MessageEmitter#send
  * @param {Message} message
  */
-MessageEmitter.prototype.selfPost = function(message) {
-  message.from = message.to = this.id
-  this.post(message)
+MessageEmitter.prototype.send = function(message) {
+  throw message
 }

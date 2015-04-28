@@ -168,10 +168,11 @@ GossipWorker.prototype.send = function(message) {
   self.postMessage(message)
 }
 
-// Inline code called on Worker instantiation
+// Inline code called during worker instantiation
+// Start the GossipWorker
 self.gossipWorker = new GossipWorker()
-// Directly forward messages down
-self.addEventListener('message', evt => {
-  var message = evt.data
-  self.gossipWorker.post(message)
+
+// Messages from outside are dispatched through the MessageEmitter interface
+self.addEventListener('message', evtMessage => {
+  self.gossipWorker.dispatchMessage(evtMessage.data)
 })

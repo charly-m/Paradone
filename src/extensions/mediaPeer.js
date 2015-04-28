@@ -41,7 +41,9 @@ var addMedia = function(sourceURL, metaURL, tag, autoload) {
   // Track the file
   console.debug('add media')
   var media = new Media(sourceURL, metaURL, tag, autoload)
-  this.selfPost({
+  this.dispatchMessage({
+    from: this.id,
+    to: this.id,
     type: 'request-metadata',
     data: metaURL,
     url: sourceURL
@@ -67,7 +69,9 @@ var askForNextParts = function(media, nbParts) {
     timeLog('Server download of part', partNumber)
     let partRange = media.getRangeOfPart(partNumber)
     getRemoteFile(media.url, 'arraybuffer', partRange)
-      .then(part => peer.selfPost({
+      .then(part => peer.dispatchMessage({
+        from: this.id,
+        to: this.id,
         type: 'part',
         data: part,
         url: media.url,
@@ -120,7 +124,9 @@ var onmetadata = function(message) {
   media.setMetadata(meta)
 
   // We can start downloading the head
-  this.selfPost({
+  this.dispatchMessage({
+    from: this.id,
+    to: this.id,
     type: 'request-head',
     data: '',
     url: url
@@ -134,7 +140,9 @@ var onrequestmetadata = function(message) {
   var metaURL = message.data
   getRemoteFile(metaURL, 'json').then(meta => {
     meta.url = metaURL
-    this.selfPost({
+    this.dispatchMessage({
+      from: this.id,
+      to: this.id,
       type: 'metadata',
       data: meta,
       url: message.url
@@ -161,7 +169,9 @@ var onrequesthead = function(message) {
   var media = this.files.get(url)
 
   getRemoteFile(url, 'arraybuffer', media.getRangeOfHead())
-    .then(head => this.selfPost({
+    .then(head => this.dispatchMessage({
+      from: this.id,
+      to: this.id,
       type: 'head',
       url: url,
       data: head
@@ -242,7 +252,9 @@ var updateGossipDescriptor = function(message) {
   // Add received part
   parts.push(message.number)
 
-  this.selfPost({
+  this.dispatchMessage({
+    from: this.id,
+    to: this.id,
     type: 'gossip:descriptor-update',
     data: {
       path: ['files', message.url],
@@ -274,8 +286,6 @@ function MediaPeer(parameters) {
   this.on('request-part', onrequestpart)
   this.on('part', onpart)
   this.on('part', updateGossipDescriptor)
-
-  this.on('gossip:view-update')
 
   this.files = new Map()
   this.askForNextParts = askForNextParts

@@ -26,17 +26,6 @@ import { contains } from 'ramda'
  */
 
 /**
- * Special wrapping for promise related errors with line number
- * @param {Error} e - Contains detailed information on the error
- */
-export function error(e) {
-  return function(err) {
-    console.warn('Error line ', e.lineNumber)
-    console.error(err)
-  }
-}
-
-/**
  * Special definition for type extension and correct prototype chain
  */
 export function extend(base, sub) {

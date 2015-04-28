@@ -44,7 +44,7 @@ function Signal(peer, options) {
   socket.addEventListener('error', (error) => console.error(error))
   socket.addEventListener('message', (event) => {
     var message = JSON.parse(event.data)
-    peer.emit(message)
+    peer.dispatchMessage(message)
   })
 
   this.socket = socket

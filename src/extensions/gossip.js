@@ -48,7 +48,14 @@
  */
 export default function Gossip(parameters) {
   this.worker = new Worker('./gossipWorker.js')
-  this.worker.addEventListener('message', evt => this.send(evt.data))
+  this.worker.addEventListener('message', evt => {
+    var message = evt.data
+    if(message.to === this.id) {
+      this.dispatchMessage(message)
+    } else {
+      this.send(message)
+    }
+  })
 
   // this.worker.postMessage doesn't seem to be a valid listener, we need to
   // wrap it

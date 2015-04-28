@@ -57,7 +57,7 @@ export const options = {
 var onclose = function(peer, peerConnection, remotePeer, event) {
   console.info('[dc](' + peer.id + ') Channel closed with ' + remotePeer)
   peerConnection.status = 'close'
-  peer.emit({type: 'disconnected', from: remotePeer, data: event})
+  peer.dispatchMessage({type: 'disconnected', from: remotePeer, data: event})
 }
 
 /** An error has been thrown by the DataChannel */
@@ -76,7 +76,7 @@ var onerror = function(error) {
 var onmessage = function(peer, event) {
   var message = JSON.parse(event.data)
   if(-1 === message.to || peer.id === message.to) {
-    peer.emit(message)
+    peer.dispatchMessage(message)
   } else if(message.ttl > 0) {
     peer.forward(message)
   }
@@ -94,7 +94,7 @@ var onopen = function(peer, peerConnection, remotePeer, event) {
     console.info('[dc](' + peer.id + ') Channel open with' + remotePeer)
     peerConnection.channel = channel
     peerConnection.status = 'open'
-    peer.emit({type: 'connected', from: remotePeer, data: event})
+    peer.dispatchMessage({type: 'connected', from: remotePeer, data: event})
   }
 }
 

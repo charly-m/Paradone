@@ -109,8 +109,8 @@ function PeerConnection(peer, remotePeer) {
     pc.createOffer(function(offer) {
       pc.setLocalDescription(offer, function() {
         sendOffer(offer)
-      }, util.error(new Error('Failed to set local description')))
-    }, util.error(new Error('Failed to create SDP offer')))
+      }, () => { throw new Error('Failed to set local description') })
+    }, () => { throw new Error('Failed to create SDP offer') })
   }
 
   /**
@@ -131,9 +131,9 @@ function PeerConnection(peer, remotePeer) {
         pc.setLocalDescription(answer, function success() {
           // ... and send it
           sendAnswer(answer)
-        }, util.error(new Error()))
-      }, util.error(new Error()))
-    }, util.error(new Error()))
+        }, () => { throw new Error() })
+      }, () => { throw new Error() })
+    }, () => { throw new Error() })
   }
 
   /**
