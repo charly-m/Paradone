@@ -95,7 +95,7 @@ GossipRPS.prototype.genBuffer = function(thread, distantId, view) {
 
   if(thread === 'active') {
     let result = computeBuffer(defaultBufferSize - 1)
-    result.push({id: this.id, age: 0})
+    result.push(this.selfDescriptor)
     return result
   } else {
     return computeBuffer(defaultBufferSize)

@@ -22,14 +22,17 @@
 
 import MessageEmitter from '../messageEmitter.js'
 import Algo from './gossipRPS.js'
-export { GossipWorker as default }
+import { assocPath } from 'ramda'
+
+export default GossipWorker
 
 /**
  * Sends the view to the main thread
  */
 var updateOutsideView = function() {
+  console.debug('GWorker: Send view to outside world')
   this.send({
-    type: 'view-update',
+    type: 'gossip:view-update',
     from: this.id,
     to: this.id,
     data: this.view
@@ -40,8 +43,6 @@ var updateOutsideView = function() {
  * Active exchange of views with a selected peers. We have to select one peer
  * (oldest or randomly), generate a view for this remote peer, send the view,
  * wait for the answer and finally generate a new merged view.
- *
- * @param {View} view - Base view used to generate information for the peer
  */
 var activeThread = function() {
   var view = this.view
@@ -115,6 +116,29 @@ var passiveThread = function(message) {
   updateOutsideView.call(this)
 }
 
+var oninit = function(message) {
+  let parameters = message.data
+  this.options = parameters
+
+  if(parameters.hasOwnProperty('gossipPeriod')) {
+    this.gossipPeriod = parameters.gossipPeriod
+  } else {
+    this.gossipPeriod = 2500
+  }
+}
+
+var onfirstview = function(message) {
+  this.id = message.data.id
+  this.view = message.data.view
+  this.algo = new Algo(this.id, this.options)
+  self.setInterval(activeThread.bind(this), this.gossipPeriod)
+}
+
+var ondescriptorupdate = function(message) {
+  this.selfDescriptor = assocPath(
+    message.data.path, message.data.value, this.algo.selfDescriptor)
+}
+
 /**
  * @class GossipWorker
  * @property {View} view - Current view of the peer
@@ -125,25 +149,11 @@ function GossipWorker() {
   MessageEmitter.call(this)
   this.view = []
 
-  this.on('init', message => {
-    let parameters = message.data
-    this.options = parameters
-
-    if(parameters.hasOwnProperty('gossipPeriod')) {
-      this.gossipPeriod = parameters.gossipPeriod
-    } else {
-      this.gossipPeriod = 2500
-    }
-  })
+  this.on('gossip:init', oninit)
   // As soon as the first view is received, start the active thread
-  this.on('first-view', message => {
-    this.id = message.data.id
-    this.view = message.data.view
-    this.algo = new Algo(this.id, this.options)
-
-    self.setInterval(activeThread.bind(this), this.gossipPeriod)
-  })
-  this.on('gossip:request-exchange', passiveThread.bind(this))
+  this.on('first-view', onfirstview)
+  this.on('gossip:descriptor-update', ondescriptorupdate)
+  this.on('gossip:request-exchange', passiveThread)
 }
 
 GossipWorker.prototype = Object.create(MessageEmitter.prototype)
@@ -158,9 +168,10 @@ GossipWorker.prototype.send = function(message) {
   self.postMessage(message)
 }
 
-self.mediator = new GossipWorker()
+// Inline code called on Worker instantiation
+self.gossipWorker = new GossipWorker()
 // Directly forward messages down
-self.addEventListener('message', e => {
-  var message = e.data
-  self.mediator.post(message)
+self.addEventListener('message', evt => {
+  var message = evt.data
+  self.gossipWorker.post(message)
 })

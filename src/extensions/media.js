@@ -26,6 +26,11 @@ export default Media
 var MediaSource = window.MediaSource || window.WebKitMediaSource
 
 /**
+ * @typedef Part
+ * @property {}
+ */
+
+/**
  * Download, store, load and play a media file with local storage and
  * MediaSource
  *
@@ -247,7 +252,9 @@ var appendQueuedParts = function() {
   if(typeof nextPart === 'undefined') {
     this.sourceBuffer.removeEventListener('updateend', appendQueuedParts)
 
-    if(this.isComplete()) {
+    if(this.isComplete() &&
+       this.mediaSource.readyState === 'open' &&
+       !this.sourceBuffer.updating) {
       this.mediaSource.endOfStream()
     }
   } else if(!this.sourceBuffer.updating) {

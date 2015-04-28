@@ -33,10 +33,12 @@ export default GossipAlgorithm
  *
  * @property {string} id
  * @property {Object} options
+ * @property {NodeDescriptor} selfDescriptor
  */
 function GossipAlgorithm(id, options) {
   this.id = id
   this.options = options
+  this.selfDescriptor = {id: this.id, age: 0}
 }
 
 /**

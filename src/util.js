@@ -190,3 +190,11 @@ export function messageIsValid(msg) {
 
   return originals && additionals
 }
+
+export function timeLog(...string) {
+  var d = new Date()
+  var h = d.getHours()
+  var m = d.getMinutes()
+  var s = d.getSeconds()
+  console.debug(h + ':' + m + ':' + s, ...string)
+}

@@ -21,7 +21,7 @@
 'use strict'
 
 import Media from './media.js'
-import { getURL, getRemoteFile } from '../util.js'
+import { getURL, getRemoteFile, timeLog } from '../util.js'
 import { filter, forEach, pipe } from 'ramda'
 export default MediaPeer
 
@@ -63,37 +63,41 @@ var addMedia = function(sourceURL, metaURL, tag, autoload) {
  * @param {number} nbParts - number of parts to be returned
  */
 var askForNextParts = function(media, nbParts) {
-  var postPart = peer => partNumber => part => {
-    peer.selfPost({
-      type: 'part',
-      data: part,
-      url: media.url,
-      number: partNumber
-    })
+  var downloadFromServer = (peer, partNumber) => () => {
+    timeLog('Server download of part', partNumber)
+    let partRange = media.getRangeOfPart(partNumber)
+    getRemoteFile(media.url, 'arraybuffer', partRange)
+      .then(part => peer.selfPost({
+        type: 'part',
+        data: part,
+        url: media.url,
+        number: partNumber
+      }))
   }
 
   var choices = media.nextPartsToDownload(nbParts)
   choices.forEach(choice => {
     var [remote, partNumber] = choice
-    var partRange = media.getRangeOfPart(partNumber)
 
     if(remote === 'source') { // Download from server
-      getRemoteFile(media.url, 'arraybuffer', partRange)
-        .then(postPart(this)(partNumber))
-    } else { // Download from p2p network
-      console.info('Asking for part', partNumber, 'to peer', remote)
-      this.send({
-        type: 'request-part',
-        from: this.id,
-        to: remote,
-        url: media.url,
-        ttl: this.ttl,
-        forwardBy: [],
-        number: partNumber,
-        timeout: 3000
-      }, () => getRemoteFile(media.url, 'arraybuffer', partRange)
-                .then(postPart(this)(partNumber)))
+      remote = -1
+      /*getRemoteFile(media.url, 'arraybuffer', partRange)
+        .then(postPart(this)(partNumber))*/
     }
+    // else { // Download from p2p network
+    timeLog('Asking for part', partNumber, 'to peer', remote)
+
+    this.send({
+      type: 'request-part',
+      from: this.id,
+      to: remote,
+      url: media.url,
+      ttl: this.ttl,
+      forwardBy: [],
+      number: partNumber,
+      timeout: 3000
+    }, downloadFromServer(this, partNumber))
+    // }
 
     media.parts[partNumber].status = 'pending'
   })
@@ -104,22 +108,7 @@ var askForNextParts = function(media, nbParts) {
  *
  * @param {string} remotePeer - Id of the remote peer we just connected to
  */
-var onconnected = function(message) {
-  var remotePeer = message.from
-  // We want to know which files the neighbour has
-  this.files.forEach(function(file) {
-    if(!file.complete) {
-      console.info('Asking for media info', file.url, 'to remote', remotePeer)
-      this.connections.get(remotePeer).send({
-        type: 'request-info',
-        from: this.id,
-        to: remotePeer,
-        url: file.url,
-        forwardBy: []
-      })
-    }
-  }, this)
-}
+var onconnected = function(message) {}
 
 /**
  */
@@ -244,6 +233,24 @@ var parseDocument = function() {
   load(videos)
 }
 
+var updateGossipDescriptor = function(message) {
+  var media = this.files.get(message.url)
+  // Get already downloaded parts
+  var parts = media.parts
+    .filter(p => p.status === 'available' || p.status === 'added')
+    .map(p => p.partNumber)
+  // Add received part
+  parts.push(message.number)
+
+  this.selfPost({
+    type: 'gossip:descriptor-update',
+    data: {
+      path: ['files', message.url],
+      value: parts
+    }
+  })
+}
+
 /**
  * A media peer implements the functions used to share and retrieve media files
  * on the mesh
@@ -266,6 +273,9 @@ function MediaPeer(parameters) {
   this.on('head', onhead)
   this.on('request-part', onrequestpart)
   this.on('part', onpart)
+  this.on('part', updateGossipDescriptor)
+
+  this.on('gossip:view-update')
 
   this.files = new Map()
   this.askForNextParts = askForNextParts

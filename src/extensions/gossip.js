@@ -48,21 +48,20 @@
  */
 export default function Gossip(parameters) {
   this.worker = new Worker('./gossipWorker.js')
-  this.worker.addEventListener('message', evt => {
-    var message = evt.data
-    if(message.type === 'view-update') {
-      this.view = message.data
-    } else {
-      this.send(message)
-    }
-  })
+  this.worker.addEventListener('message', evt => this.send(evt.data))
 
   // this.worker.postMessage doesn't seem to be a valid listener, we need to
   // wrap it
-  this.on('first-view', message => this.worker.postMessage(message))
-  this.on('gossip:request-exchange',
-          message => this.worker.postMessage(message))
-  this.on('gossip:answer-request', message => this.worker.postMessage(message))
+  this.on('first-view', msg => this.worker.postMessage(msg))
+  this.on('gossip:request-exchange', msg => this.worker.postMessage(msg))
+  this.on('gossip:answer-request', msg => this.worker.postMessage(msg))
+  this.on('gossip:descriptor-update', msg => this.worker.postMessage(msg))
 
-  this.worker.postMessage({type: 'init', data: parameters})
+  this.on('gossip:view-update', msg => {
+    console.debug('Gossip: New view', msg.data)
+    this.view = msg.data
+  })
+
+  // Initialization of the Web Worker
+  this.worker.postMessage({type: 'gossip:init', data: parameters})
 }

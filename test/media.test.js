@@ -1,6 +1,6 @@
 'use strict'
 
-var Media = require('../src/media.js')
+var Media = require('../src/extensions/media.js')
 var media
 var url = 'url/to/my.file'
 var buildInfo = function(nbParts, available, remote) {

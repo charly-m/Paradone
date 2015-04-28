@@ -87,7 +87,7 @@ function Peer(options) {
   this.icecandidates = new Map()
   this.ttl = Peer.ttl
   this.queue = []
-  this.previousTimestamp = Infinity
+  this.previousTimestamp = -Infinity
 
   this.connections.set('signal', signal)
   window.setInterval(processQueue.bind(this), Peer.queueTimeout)
