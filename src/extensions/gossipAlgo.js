@@ -28,12 +28,12 @@ export default GossipAlgorithm
  * an unstructured network.
  *
  * @interface GossipAlgorithm
- * @param {string} id
- * @param {Object} options
+ * @param {string} id - id of the peer
+ * @param {Object} options - values used to tune the algorithm
  *
- * @property {string} id
- * @property {Object} options
- * @property {NodeDescriptor} selfDescriptor
+ * @property {string} id - id of the peer
+ * @property {Object} options - values used to tune the algorithm
+ * @property {NodeDescriptor} selfDescriptor - Descriptor of the node
  */
 function GossipAlgorithm(id, options) {
   this.id = id
@@ -42,12 +42,16 @@ function GossipAlgorithm(id, options) {
 }
 
 /**
+ * Generates a subset of the view for a remote peer
+ *
  * @function GossipAlgorithm#genBuffer
  * @return {View} A set of NodeDescriptor which will be sent to a remote peer
  */
 GossipAlgorithm.prototype.genBuffer = function() {}
 
 /**
+ * Merges the NodeDescriptors received from a remote peer with the View
+ *
  * @function GossipAlgorithm#mergeView
  * @return {View} The updated view
  */
@@ -76,7 +80,7 @@ GossipAlgorithm.prototype.randomSubview = function(size, view) {
  * @return {NodeDescriptor} oldest node descriptor of the view
  */
 GossipAlgorithm.prototype.getOldestNodeDescriptor = function(view) {
-  return view.reduce((acc, val) => acc.age > val.age ? acc : val)
+  return view.reduce(((acc, val) => acc.age > val.age ? acc : val), {age: 0})
 }
 
 /**
@@ -85,7 +89,7 @@ GossipAlgorithm.prototype.getOldestNodeDescriptor = function(view) {
  *
  * @function GossipAlgorithm#increaseAge
  * @param {View} view - View to age
- * @return {View} The same view with every N.D. one step older
+ * @return {View} The same view with every NodeDescriptor one unit older
  */
 GossipAlgorithm.prototype.increaseAge = function(view) {
   view.forEach(nodeDescriptor => nodeDescriptor.age += 1)
@@ -96,7 +100,8 @@ GossipAlgorithm.prototype.increaseAge = function(view) {
  * Get the node descriptor of a known remote peer
  *
  * @function GossipAlgorithm#selectRemotePeer
- * @param {string} method - How the remote peer should be selected
+ * @param {string} method - How the remote peer should be selected. Possible
+ *        values are `oldest` and `random`
  * @param {View} view - Where the descriptor should be get from
  * @return {NodeDescriptor} Descriptor of the selected remote peer
  */

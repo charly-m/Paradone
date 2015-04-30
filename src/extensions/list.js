@@ -32,6 +32,8 @@ var modules = {
  */
 
 /**
+ * Extends the peer instance with a module
+ *
  * @function module:extensions~apply
  * @param {Peer} peer - Peer instance to be extended
  * @param {Array.<Extension>} extensions - List of mixins used to extend the

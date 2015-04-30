@@ -20,11 +20,16 @@
  */
 'use strict'
 
+// ES6 Polyfill
+import 'babelify/polyfill'
+
 import * as datachannel from './datachannel.js'
 import Peer from './peer.js'
 import PeerConnection from './peerConnection.js'
 import Signal from './signal.js'
 import * as util from './util.js'
+
+var peer
 
 // Export for the `paradone` module
 export default {
@@ -33,7 +38,8 @@ export default {
   PeerConnection,
   Signal,
   util,
-  start
+  start,
+  peer
 }
 
 /**
@@ -44,20 +50,11 @@ export default {
  */
 function start(opts) {
   document.addEventListener('DOMContentLoaded', function() {
-    new Peer(opts)
+    peer = new Peer(opts)
   })
 }
 
 // Additional type definitions
-/**
- * @typedef {Object} Info
- * @desc Structure used to store meta-data of a media
- * @property {string} url - URL of the media
- * @property {number} parts - Number of parts for the whole media
- * @property {number} size - Size of the file
- * @property {Array.<number>} available - Numbers of parts locally possessed
- * @property {Remote} remote - Availability of parts on known peers
- */
 
 /**
  * @typedef {Object} Message
@@ -72,9 +69,4 @@ function start(opts) {
  * @property {string} [url] - URL of the desired media
  * @property {number} [number] - Number of the part transmitted in
  *           `request-part` and `part` messages
- */
-
-/**
- * @typedef {Object.<string, Array.<number>>} Remote
- * @desc Map a peer ID to an array of possessed parts number
  */

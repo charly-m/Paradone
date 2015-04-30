@@ -23,9 +23,9 @@
 import MessageEmitter from './messageEmitter.js'
 import PeerConnection from './peerConnection.js'
 import Signal from './signal.js'
-import * as util from './util.js'
+import { contains, messageIsValid } from './util.js'
 import * as extensions from './extensions/list.js'
-import { contains, partition } from 'ramda'
+import { partition } from 'ramda'
 export default Peer
 
 /**
@@ -113,6 +113,7 @@ Peer.ttl = 3
 
 /**
  * Queue check timeout
+ *
  * @name Peer.queueTimeout
  * @type {number}
  */
@@ -132,7 +133,7 @@ var broadcast = function(connections, message) {
     // Do not send to signal and nodes that already had this message
     // Do not send the message to nodes that forwarded it
     if(peerId !== 'signal' &&
-       from.indexOf(peerId) === -1 &&
+       !contains(peerId, from) &&
        connection.status === 'open') {
       connection.send(message)
       targets += 1
@@ -156,11 +157,12 @@ var broadcast = function(connections, message) {
  */
 Peer.prototype.send = function(message, callback) {
 
-  if(!util.messageIsValid(message)) {
+  if(!messageIsValid(message)) {
     throw new Error('Message object is invalid')
   }
 
   var to = message.to
+  var forwardableTypes = ['icecandidate', 'request-peer', 'offer', 'answer']
 
   if(to === this.id) {
     // Message for itself
@@ -174,16 +176,14 @@ Peer.prototype.send = function(message, callback) {
     // TODO Replace with Cord like lookup
     to = message.route.shift()
     this.connections.get(to).send(message)
+  } else if(contains(message.type, forwardableTypes)) {
+    // Message is connection related and should be forwarded
+    broadcast(this.connections, message)
   } else {
-    // Its either a direct or a queuable message
-    var forwardableTypes = ['icecandidate', 'request-peer', 'offer', 'answer']
-    if(contains(message.type, forwardableTypes)) {
-      broadcast(this.connections, message)
-    } else {
-      var timestamp = Date.now()
-      this.queue.push({message, callback, timestamp})
-      this.requestPeer(message.to)
-    }
+    // Its a queuable message
+    var timestamp = Date.now()
+    this.queue.push({ message, callback, timestamp })
+    this.requestPeer(message.to)
   }
 }
 
@@ -302,9 +302,7 @@ var onoffer = function(message) {
   var addIceCandidate = function(remotePeer, peerConnection) {
     if(this.icecandidates.has(remotePeer)) {
       var candidates = this.icecandidates.get(remotePeer)
-      var successCallback = function() {
-        console.info('Succesfully added stored icecandidates')
-      }
+      var successCallback = function() {}
       candidates.forEach(function(candidate) {
         peerConnection.addIceCandidate(
           candidate,
@@ -356,7 +354,6 @@ var onrequestpeer = function(message) {
  * @param {Message} message - The first view received from the server
  */
 var onfirstview = function(message) {
-  console.info('First view received from server')
   this.id = message.data.id
   this.view = message.data.view
   this.dispatchMessage({

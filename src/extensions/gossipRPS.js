@@ -55,13 +55,14 @@ GossipRPS.prototype = Object.create(GossipAlgorithm.prototype)
 
 /**
  * Generates a subset of the view. The returned view will not contain any
- * descriptor about the remote peer.
+ * descriptor about the remote peer. If the view is asked by the 'active' thread
+ * the descriptor of the node will be inserted in the returned view subset.
  *
  * @function GossipRPS#genBuffer
- * @param {number} bufferSize - Maximum size of the result
+ * @param {string} thread - Generation for the active or passive thread
  * @param {string} distantId - The id that should be excluded from the extract
  * @param {View} view - The base view from which the subset is generated
- * @return {View} A subset of the view given in parameter
+ * @return {View} A subset of the view
  */
 GossipRPS.prototype.genBuffer = function(thread, distantId, view) {
 
@@ -109,10 +110,10 @@ GossipRPS.prototype.genBuffer = function(thread, distantId, view) {
  * remote. The final view will have at most C elements
  *
  * @function GossipRPS#mergeView
- * @param {View} view - View to be used as a base for merging
  * @param {View} recvBuffer - Subset of a view transmitted by the remote peer
  * @param {View} sentBuffer - IDs of the descriptors sent to the
  *        remote peer
+ * @param {View} view - View to be used as a base for merging
  * @return {View} The merged view of size C
  */
 GossipRPS.prototype.mergeView = function(recvBuffer, sentBuffer, view) {

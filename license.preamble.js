@@ -16,9 +16,13 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
  *
- * Paradone uses the free project localForage
+ * Paradone uses the free projects localForage and Ramda
  *
  * localForage -- Offline Storage, Improved
  * https://mozilla.github.io/localForage
  * (c) 2013-2015 Mozilla, Apache License 2.0
+ *
+ * Ramda -- Practical functional Javascript
+ * https://github.com/ramda/ramda
+ * (c) 2013-2015 Scott Sauyet, Michael Hurley, and David Chambers
  */

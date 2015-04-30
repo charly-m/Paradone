@@ -1,6 +1,6 @@
 {
   "name": "Paradone",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Peer-to-peer assisted media diffusion in the browser with WebRTC and MediaSource",
   "author": "GaspardP",
   "license": "AGPLv3",

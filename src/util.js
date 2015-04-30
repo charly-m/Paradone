@@ -20,39 +20,15 @@
  */
 'use strict'
 
-import { contains } from 'ramda'
 /**
  * @module util
+ * @desc Contains useful functions for developpers
  */
-
-/**
- * Special definition for type extension and correct prototype chain
- */
-export function extend(base, sub) {
-  // Also, do a recursive merge of two prototypes, so we don't overwrite the
-  // existing prototype, but still maintain the inheritance chain
-  var origProto = sub.prototype
-  sub.prototype = Object.create(base.prototype)
-
-  Object.keys(origProto).forEach(function(key) {
-    sub.prototype[key] = origProto[key]
-  })
-
-  // Remember the constructor property was set wrong, let's fix it
-  sub.prototype.constructor = sub
-  // In ECMAScript5+ (all modern browsers), you can make the constructor
-  // property non-enumerable if you define it like this instead
-  Object.defineProperty(sub.prototype, 'constructor', {
-    enumerable: false,
-    value: sub
-  })
-}
 
 /**
  * Returns a shallow copy of an array with its elements shuffled
  *
- * @inner
- * @memberof module:util
+ * @function module:util~shuffleArray
  * @param {Array} array - Source array
  * @return {Array} Shuffled elements in a shallow copy
  */
@@ -71,8 +47,7 @@ export function shuffleArray(array) {
 /**
  * Returns a shallow copy of an array with its elements sorted
  *
- * @inner
- * @memberof module:util
+ * @function module:util~shallowSort
  * @param {Function} sortFunction -
  * @param {Array} array - Source array
  * @return {Array} Sorted elements in a shallow copy
@@ -86,6 +61,7 @@ export function shallowSort(sortFunction, array) {
  * root of the website if the path starts with '/' otherwise it will be relative
  * to the current file. It is assumed that URL ending in '/' are for directories
  *
+ * @function module:util~getUrl
  * @param {string} pathTofile - Relative path for the file
  * @return {string} Full URL
  */
@@ -112,6 +88,7 @@ export function getURL(pathToFile) {
  * Return the result of a XHR as a promise. If the XHR succeed, the resolve
  * function of the promise will have the file requested as first parameter.
  *
+ * @function module:util~getRemoteFile
  * @param {string} fileUrl - url of the file to be downloaded
  * @param {string} [responseType='blob'] - Type returned by the server
  * @param {number} [range=''] - If a range should be requested instead of the
@@ -151,6 +128,24 @@ export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
 }
 
 /**
+ * Checks if an element is contained in the given array
+ *
+ * @function module:util~contains
+ * @param {T} element
+ * @param {Array.<T>} array
+ * @template T
+ * @return {boolean} Whether element is in array or not
+ */
+export function contains(element, array) {
+  return array.indexOf(element) >= 0
+}
+
+/**
+ * Checks the properties contained in the message object
+ *
+ * @function module:util~messageIsValid
+ * @param {Message} message
+ * @return {boolean} true if the message is valid
  * @throw {Error}
  */
 export function messageIsValid(msg) {
@@ -177,13 +172,20 @@ export function messageIsValid(msg) {
     return true
   }).reduce(((acc, elt) => acc && elt), true)
 
+  if(!originals || !additionals) {
+    console.debug(msg)
+  }
+
   return originals && additionals
 }
 
-export function timeLog(...string) {
-  var d = new Date()
-  var h = d.getHours()
-  var m = d.getMinutes()
-  var s = d.getSeconds()
-  console.debug(h + ':' + m + ':' + s, ...string)
+/**
+ * Use only for checking message size not for actual computation
+ *
+ * @param {string} string
+ * @return {number} The length in bytes of the string
+ * @deprecated
+ */
+export function byteCount(string) {
+  return window.unescape(encodeURIComponent(string)).length
 }

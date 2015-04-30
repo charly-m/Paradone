@@ -53,9 +53,9 @@ function SignalFirebase(peer, options) {
 }
 
 /**
+ * @function SignalFirebase#getId
  * @return {string} Id of the peer
  * @deprecated Since v0.2.1
- * @memberof SignalFirebase
  */
 SignalFirebase.prototype.getId = function() {
   return this.id
@@ -68,9 +68,9 @@ SignalFirebase.prototype.getId = function() {
  *   Firebase broadcast
  * - The message data will be transformed to a JSON String
  *
+ * @function SignalFirebase#send
  * @param {Message} message - message to be sent on the mesh
  * @override
- * @memberof SignalFirebase
  */
 SignalFirebase.prototype.send = function(message) {
   message.ttl = 0
@@ -81,7 +81,7 @@ SignalFirebase.prototype.send = function(message) {
 /**
  * Defines the callback handling new messages received from the sigbal server
  *
- * @param {Firebase} firebase
+ * @param {Firebase} firebase - the global Firebase instance
  * @param {string} id - Id of the peer
  * @param {Peer} peer - instance of Peer object messages should be sent to
  */

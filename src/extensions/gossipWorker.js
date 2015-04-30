@@ -30,7 +30,6 @@ export default GossipWorker
  * Sends the view to the main thread
  */
 var updateOutsideView = function() {
-  console.debug('GWorker: Send view to outside world')
   this.send({
     type: 'gossip:view-update',
     from: this.id,
@@ -116,6 +115,13 @@ var passiveThread = function(message) {
   updateOutsideView.call(this)
 }
 
+/**
+ * Sets the algorithm's options
+ *
+ * @param {Message} message
+ * @param {number} [message.data.gossipPeriod=2500] - Interval in milliseconds
+ *        between two active requests
+ */
 var oninit = function(message) {
   let parameters = message.data
   this.options = parameters
@@ -127,6 +133,11 @@ var oninit = function(message) {
   }
 }
 
+/**
+ * Starts the active thread of the algorithm
+ *
+ * @param {Message} message
+ */
 var onfirstview = function(message) {
   this.id = message.data.id
   this.view = message.data.view
@@ -134,12 +145,41 @@ var onfirstview = function(message) {
   self.setInterval(activeThread.bind(this), this.gossipPeriod)
 }
 
+/**
+ * Updates the node's descriptor. This can be used by extensions to convey
+ * information about the peer to other remote peers through view exchange.
+ *
+ * @param {Message} message
+ * @param {Array.<string>} message.data.path - Path of properties in the
+ *        descriptor object where the value will be set or updated. If a
+ *        property of the path does not exist in the descriptor it will *not* be
+ *        created and the update will fail.
+ * @param {any} message.data.value - Value to be added at the end of the path
+ */
 var ondescriptorupdate = function(message) {
-  this.selfDescriptor = assocPath(
+  this.algo.selfDescriptor = assocPath(
     message.data.path, message.data.value, this.algo.selfDescriptor)
 }
 
 /**
+ * A gossip worker is a class that should be run in a web Worker. The file
+ * containing the class has the necessary code to instantiate itself. The
+ * computations will be started as soon as the `first-view` message is received.
+ * The data returned by the `message` events will be formated as a `Message`
+ * object.
+ *
+ * @example
+ * // Start a Gossip Worker
+ * var gworker = new Worker('gossipWorker.js')
+ * gworker.addEventListener('message', evt => {
+ *   var message = evt.data /// @type {Message}
+ *   dispatchMessage(message) // Do something with the message
+ * })
+ * // Set algorithm options
+ * gworker.postMessage({type: 'gossip:init', ..., data: options})
+ * // Start the algorithm
+ * gworker.postMessage({type: 'first-view', ..., data: first-view})
+ *
  * @class GossipWorker
  * @property {View} view - Current view of the peer
  * @property {GossipAlgorithm} algo - Gossip algorithm used to compute the new
@@ -149,10 +189,13 @@ function GossipWorker() {
   MessageEmitter.call(this)
   this.view = []
 
-  this.on('gossip:init', oninit)
+  // Initialisation options
+  this.once('gossip:init', oninit)
   // As soon as the first view is received, start the active thread
-  this.on('first-view', onfirstview)
+  this.once('first-view', onfirstview)
+  // Request from the peer to update its descriptor
   this.on('gossip:descriptor-update', ondescriptorupdate)
+  // Partial view request from a remote peer
   this.on('gossip:request-exchange', passiveThread)
 }
 

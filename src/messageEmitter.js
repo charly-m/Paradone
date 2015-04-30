@@ -20,6 +20,7 @@
  */
 'use strict'
 
+import { messageIsValid } from './util.js'
 export default MessageEmitter
 
 /**
@@ -119,14 +120,13 @@ MessageEmitter.prototype.removeAllListeners = function(messageType) {
  * @return {MessageEmitter} Current instance for chaining
  */
 MessageEmitter.prototype.dispatchMessage = function(message) {
-    var type = message.type
-    if(typeof type === 'undefined') { // TODO util validation
-      throw new Error('The message object isn\'t well formed')
-    } else if(this.listeners.has(type)) {
-      this.listeners.get(type).forEach(listener => listener.call(this, message))
-    }
-    return this
+  var type = message.type
+
+  if(messageIsValid(message) && this.listeners.has(type)) {
+    this.listeners.get(type).forEach(listener => listener.call(this, message))
   }
+  return this
+}
 
 /**
  * @function MessageEmitter#listenerCount

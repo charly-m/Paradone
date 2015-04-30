@@ -55,7 +55,6 @@ export const options = {
  * status of the Peer
  */
 var onclose = function(peer, peerConnection, remotePeer, event) {
-  console.info('[dc](' + peer.id + ') Channel closed with ' + remotePeer)
   peerConnection.status = 'close'
   peer.dispatchMessage({type: 'disconnected', from: remotePeer, data: event})
 }
@@ -91,7 +90,6 @@ var onmessage = function(peer, event) {
 var onopen = function(peer, peerConnection, remotePeer, event) {
   var channel = event.target
   if('open' === channel.readyState.toLowerCase()) {
-    console.info('[dc](' + peer.id + ') Channel open with' + remotePeer)
     peerConnection.channel = channel
     peerConnection.status = 'open'
     peer.dispatchMessage({type: 'connected', from: remotePeer, data: event})
@@ -119,16 +117,15 @@ export function setHandlers(channel, peer, peerConnection, remotePeer) {
 }
 
 /**
- * Creates a new DataChannel from a PeerConnection object and add the
- * callbacks needed to forward events to the Peer and PeerConnection objects
- * (like a connection/disconnection, error and reception of messages)
+ * Creates a new DataChannel from a PeerConnection object and add the callbacks
+ * needed to forward events to the Peer and PeerConnection objects (like a
+ * connection/disconnection, error and reception of messages)
  *
  * @function module:datachannel~create
  * @param {Peer} peer - Events will be forwarded to this Peer
  * @param {PeerConnection} peerConnection - PeerConnection where the
  *        DataChannel will be stored
  * @param {string} id - Id of the remote peer
- *
  * @return {DataChannel}
  */
 export function create(peer, peerConnection, remotePeer) {

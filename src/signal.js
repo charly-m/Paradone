@@ -53,8 +53,8 @@ function Signal(peer, options) {
 /**
  * Sends message to the signaling system
  *
+ * @function Signal#send
  * @param {Message} message
- * @memberof Signal
  */
 Signal.prototype.send = function(message) {
   message.ttl = 0

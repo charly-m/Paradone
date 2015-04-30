@@ -21,7 +21,6 @@
 'use strict'
 
 import * as datachannel from './datachannel.js'
-import * as util from './util.js'
 export default PeerConnection
 
 /**
@@ -131,9 +130,9 @@ function PeerConnection(peer, remotePeer) {
         pc.setLocalDescription(answer, function success() {
           // ... and send it
           sendAnswer(answer)
-        }, () => { throw new Error() })
-      }, () => { throw new Error() })
-    }, () => { throw new Error() })
+        }, e => { throw e })
+      }, e => { throw e })
+    }, e => { throw e })
   }
 
   /**
