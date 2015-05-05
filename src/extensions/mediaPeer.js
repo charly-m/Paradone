@@ -41,7 +41,7 @@ var addMedia = function(sourceURL, metaURL, tag, autoload) {
   this.dispatchMessage({
     from: this.id,
     to: this.id,
-    type: 'request-metadata',
+    type: 'media:request-metadata',
     data: metaURL,
     url: sourceURL
   })
@@ -74,7 +74,7 @@ var askForNextParts = function(media, nbParts) {
       .then(part => peer.dispatchMessage({
         from: this.id,
         to: this.id,
-        type: 'part',
+        type: 'media:part',
         data: part,
         url: media.url,
         number: partNumber
@@ -85,7 +85,7 @@ var askForNextParts = function(media, nbParts) {
 
   choices.forEach(choice => {
     this.send({
-      type: 'request-part',
+      type: 'media:request-part',
       from: this.id,
       to: choice.id,
       url: media.url,
@@ -124,7 +124,7 @@ var onmetadata = function(message) {
   this.dispatchMessage({
     from: this.id,
     to: this.id,
-    type: 'request-head',
+    type: 'media:request-head',
     data: '',
     url: url
   })
@@ -142,7 +142,7 @@ var onrequestmetadata = function(message) {
     this.dispatchMessage({
       from: this.id,
       to: this.id,
-      type: 'metadata',
+      type: 'media:metadata',
       data: meta,
       url: message.url
     })
@@ -178,7 +178,7 @@ var onrequesthead = function(message) {
     .then(head => this.dispatchMessage({
       from: this.id,
       to: this.id,
-      type: 'head',
+      type: 'media:head',
       url: url,
       data: head
     }))
@@ -214,7 +214,7 @@ var onrequestpart = function(message) {
   var numberOfChunks = chunks.length
   chunks.forEach((chunk, id) => {
     this.respondTo(message, {
-      type: 'part',
+      type: 'media:part',
       number: message.number + ':' + id + ':' + numberOfChunks,
       data: chunk,
       url: message.url
@@ -262,6 +262,7 @@ var updateGossipDescriptor = function(message) {
     parts.push(message.number)
   }
 
+  // If the gossip extension is set this message will update the node descriptor
   this.dispatchMessage({
     from: this.id,
     to: this.id,
@@ -313,13 +314,13 @@ function MediaPeer(options) {
   // Start the script on each connection
   this.on('connected', onconnected)
 
-  this.on('request-metadata', onrequestmetadata)
-  this.on('metadata', onmetadata)
-  this.on('request-head', onrequesthead)
-  this.on('head', onhead)
-  this.on('request-part', onrequestpart)
-  this.on('part', onpart)
-  this.on('part', updateGossipDescriptor)
+  this.on('media:request-metadata', onrequestmetadata)
+  this.on('media:metadata', onmetadata)
+  this.on('media:request-head', onrequesthead)
+  this.on('media:head', onhead)
+  this.on('media:request-part', onrequestpart)
+  this.on('media:part', onpart)
+  this.on('media:part', updateGossipDescriptor)
 
   this.on('gossip:view-update', updateRemoteInformation)
 
