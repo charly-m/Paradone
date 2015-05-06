@@ -46,5 +46,6 @@ export function apply(peer, extensions) {
 /**
  * @typedef Extension
  * @type {Object}
- * @property {string} name
+ * @property {string} name - Name of the extension. Will be used as parameters
+ *           in Peer's constructor options
  */

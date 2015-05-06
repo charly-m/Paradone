@@ -151,9 +151,11 @@ var onfirstview = function(message) {
  *
  * @param {Message} message
  * @param {Array.<string>} message.data.path - Path of properties in the
- *        descriptor object where the value will be set or updated. If a
- *        property of the path does not exist in the descriptor it will *not* be
- *        created and the update will fail.
+ *        descriptor object where the value will be set or updated. The first
+ *        element of the array (index 0) should be the name of the extension
+ *        requesting the descriptor update. If a property of the path does not
+ *        exist in the descriptor it will *not* be created and the update will
+ *        fail.
  * @param {any} message.data.value - Value to be added at the end of the path
  */
 var ondescriptorupdate = function(message) {
@@ -184,6 +186,8 @@ var ondescriptorupdate = function(message) {
  * @property {View} view - Current view of the peer
  * @property {GossipAlgorithm} algo - Gossip algorithm used to compute the new
  *           view and share node descriptors with other peers.
+ * @property {number} gossipPeriod - How often, in milliseconds, the active
+ *           thread of the gossip algorithm should be executed
  */
 function GossipWorker() {
   MessageEmitter.call(this)

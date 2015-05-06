@@ -44,15 +44,20 @@ npm install
 npm run build
 ```
 
-Copy the file `./dist/paradone.js` in your project directory and add it to your
+Copy the file `./dist/paradone.min.js` in your project directory and add it to your
 website.
 
 ```html
-<script src="./some/path/to/paradone.js"></script>
+<script src="./some/path/to/paradone.min.js"></script>
 <script>
   paradone.start(options)
 </script>
 ```
+
+The peer element should now be available as `paradone.peer`. You can also
+directly create your own peer instance with `new paradone.Peer(options)`. The
+`options` argument is the same as for `paradone.start`.
+
 
 ### Requirements ###
 
@@ -99,5 +104,5 @@ the following options:
 Every element of the project is referenced under the `paradone` namespace. Once
 the `start` function called the script will find the video tags and share the
 media between users through the mesh. You can pass options as arguments to the
-`start` function, see the [API](https://github.com/Paradone/Paradone/wiki/API)
+`start` function, see the [API](https://paradone.github.io/api/)
 for more detailed informations.

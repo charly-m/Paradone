@@ -102,9 +102,7 @@ describe('Gossip', function() {
         it('should return the new descriptor', function() {
           view = [{id: 'a', age: 5}, {id: 'b', age: 0}]
           var result = gossip.mergeView([{id: 'a', age: 3}], [], view).sort(sortObjArray)
-          console.log(result)
-          expect(result)
-            .to.be.deep.eq([{id: 'a', age: 3}, {id: 'b', age: 0}])
+          expect(result).to.be.deep.eq([{id: 'a', age: 3}, {id: 'b', age: 0}])
         })
       })
 
@@ -119,8 +117,7 @@ describe('Gossip', function() {
 
       it('remoteBuffer ≤ C/2, sentBuffer = ø, view < C/2 => union(remoteBuffer view)', function() {
         var remoteBuffer = [{id: 'aa', age: 3}]
-        var result = gossip.mergeView(remoteBuffer, [], view)
-              .sort(sortObjArray)
+        var result = gossip.mergeView(remoteBuffer, [], view).sort(sortObjArray)
         var union = R.union(remoteBuffer, view).sort(sortObjArray)
         expect(result).to.be.deep.eq(union)
       })
@@ -138,8 +135,8 @@ describe('Gossip', function() {
 
     describe('#selectRemotePeer', function() {
       it('should return the oldest node when method=\'oldest\'', function() {
-        expect(gossip.selectRemotePeer('oldest', view))
-          .to.be.equal(gossip.getOldestNodeDescriptor(view).id)
+        var result = gossip.selectRemotePeer('oldest', view)
+        expect(result).to.be.equal(gossip.getOldestNodeDescriptor(view).id)
       })
 
       it('should return a random id (P=1/7^1000 to be false negative)', function() {

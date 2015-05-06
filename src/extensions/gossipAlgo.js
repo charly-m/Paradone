@@ -38,7 +38,7 @@ export default GossipAlgorithm
 function GossipAlgorithm(id, options) {
   this.id = id
   this.options = options
-  this.selfDescriptor = {id: this.id, age: 0}
+  this.selfDescriptor = { id: id, age: 0 }
 }
 
 /**
@@ -80,7 +80,7 @@ GossipAlgorithm.prototype.randomSubview = function(size, view) {
  * @return {NodeDescriptor} oldest node descriptor of the view
  */
 GossipAlgorithm.prototype.getOldestNodeDescriptor = function(view) {
-  return view.reduce(((acc, val) => acc.age > val.age ? acc : val), {age: 0})
+  return view.reduce(((acc, val) => acc.age > val.age ? acc : val), { age: 0 })
 }
 
 /**

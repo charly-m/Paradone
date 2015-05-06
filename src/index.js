@@ -65,8 +65,5 @@ function start(opts) {
  * @property {number} ttl - "time to live", maximum number of forwarding
  * @property {Array.<string>} forwardBy - Id of peers which already have
  *           forwarded the message
- * @property {Object} [data] - Data of the message (media extension related)
- * @property {string} [url] - URL of the desired media
- * @property {number} [number] - Number of the part transmitted in
- *           `request-part` and `part` messages
+ * @property {Object} [data] - Data of the message
  */

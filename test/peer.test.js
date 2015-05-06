@@ -1,4 +1,4 @@
-/* global sinon expect */
+/*global sinon, expect, before, describe, it*/
 'use strict'
 
 var Peer = require('../src/peer.js')
@@ -9,185 +9,51 @@ var options = {
 window.paradone = window.paradone || {}
 window.paradone.Peer = Peer
 
+var newpeer = function(id) {
+  var p = new Peer(options)
+  p.id = id
+  p.connections.delete('signal')
+  return p
+}
+
 describe('Peer', function() {
   this.timeout(5000)
 
   describe('@constructor', function() {
     it('should be a EventEmitter', function() {
-      var peer = new Peer(options)
+      var peer = newpeer('a')
       expect(peer instanceof MessageEmitter).to.be.true
     })
   })
 
   /*
    * It should go like this
-   * - A send request:peer
-   * - B respond with offer
-   * - A respond with answer
+   * - A sends request-peer
+   * - B responds with offer
+   * - A responds with answer
    * - A and B receive ICE
    * - Datachannel is open => onconnected event is emitted
    * - Disconnection of a peer
    */
-  describe('1-to-1 connection protocol', function() {
-    var peerA = new Peer(options)
-    var peerB = new Peer(options)
-    var messages = {}
+  describe('1-to-1 connection protocol', function(done) {
+    var peers = {}
+    var peerA = peers.A = newpeer('A')
+    var peerB = peers.B = newpeer('B')
 
-    describe('A should broadcast a peer request', function() {
-      sinon.stub(peerA, 'send', function(message) {
-        messages.requestFromA = message
-      })
-      peerA.requestPeer()
+    var stubbedSend = function(message) {
+      var to = message.to
+      if(to === '-1') {
+        to = message.from === peerA.id ? peerB.id : peerA.id
+      }
+      var peer = peers[to]
+      peer.dispatchMessage(message)
+    }
 
-      var testParams = [
-        ['should be from A', 'from', peerA.id],
-        ['should be for everyone', 'to', '-1'],
-        ['should be a request', 'type', 'request-peer'],
-        ['should not been forwarded', 'forwardBy', []],
-        ['should have default ttl', 'ttl', 3]
-      ]
+    sinon.stub(peerA, 'send', stubbedSend)
+    sinon.stub(peerB, 'send', stubbedSend)
 
-      testParams.forEach(function(param) {
-        it(param[0], function() {
-          sinon.assert.calledWith(
-            peerA.send,
-            sinon.match.has(param[1], param[2]))
-        })
-      })
-    })
-
-    describe('B should return an offer to A', function() {
-      before(function(done) {
-        // Wait for B to receive the event
-        sinon.stub(peerB, 'send', function(message) {
-          if('offer' === message.type) {
-            messages.offerFromB = message
-            done()
-          } else if('icecandidate' === message.type) {
-            messages.iceFromB = message
-          }
-        })
-        // Send the previous request to B
-        peerB.emit(messages.requestFromA)
-      })
-
-      var testParams = [
-        ['should be from B', 'from', peerB.id],
-        ['should be for A', 'to', peerA.id],
-        ['should be an offer', 'type', 'offer']
-      ]
-
-      testParams.forEach(function(param) {
-        it(param[0], function() {
-          sinon.assert.calledWith(
-            peerB.send,
-            sinon.match.has(param[1], param[2]))
-        })
-      })
-    })
-
-    describe('A should return an answer to B', function() {
-      before(function(done) {
-        peerA.send.restore()
-        sinon.stub(peerA, 'send', function(message) {
-          if('answer' === message.type) {
-            messages.answerFromA = message
-            done()
-          } else if('icecandidate' === message.type) {
-            messages.iceFromA = message
-          }
-        })
-        // Send the offer to A
-        peerA.emit(messages.offerFromB)
-      })
-
-      var testParams = [
-        ['should be from A', 'from', peerA.id],
-        ['should be for B', 'to', peerB.id],
-        ['should be an answer', 'type', 'answer']
-      ]
-
-      testParams.forEach(function(param) {
-        it(param[0], function() {
-          sinon.assert.calledWith(
-            peerA.send,
-            sinon.match.has(param[1], param[2]))
-        })
-      })
-    })
-
-    /*
-     * Check if the ICECANDIDATE event has been fired. For now we get
-     * the value from global messages variable
-     */
-    describe('A should have received ICECandidates for B', function() {
-
-      it('should have sent icecandidate type message', function() {
-        var iceA = messages.iceFromA
-        expect(iceA).not.to.be.null
-        expect(iceA).not.to.be.an('undefined')
-        expect(iceA.type).to.be.equal('icecandidate')
-      })
-
-      it('should be from A', function() {
-        expect(messages.iceFromA.from).to.be.equal(peerA.id)
-      })
-
-      it('should be for B', function() {
-        expect(messages.iceFromA.to).to.be.equal(peerB.id)
-      })
-
-      it('should be a RTCIceCandidate object', function() {
-        var data = messages.iceFromA.data
-        expect(data).to.be.an.instanceof(window.RTCIceCandidate)
-      })
-    })
-
-    describe('B should have received ICECandidates for A', function() {
-      it('should have sent icecandidate type message', function() {
-        var iceB = messages.iceFromB
-        expect(iceB).not.to.be.null
-        expect(iceB).not.to.be.an('undefined')
-        expect(iceB.type).to.be.equal('icecandidate')
-      })
-
-      it('should be from B', function() {
-        expect(messages.iceFromB.from).to.be.equal(peerB.id)
-      })
-
-      it('should be for A', function() {
-        expect(messages.iceFromB.to).to.be.equal(peerA.id)
-      })
-
-      it('should be a RTCIceCandidate object', function() {
-        var data = messages.iceFromB.data
-        expect(data).to.be.an.instanceof(window.RTCIceCandidate)
-      })
-    })
-
-    describe('Peers should be connected', function() {
-      it('should fire a `onconnected` event', function(done) {
-        // We test that B correctly receives the remote ondatachannel event
-        peerB.on('connected', function() {
-          expect(peerB.connections.get(peerA.id).status).to.be.equal('open')
-          done()
-        })
-        // Finish the protocol
-        // Send answer to B
-        peerB.emit(messages.answerFromA)
-        // Set IceC for both peers
-        peerA.emit(messages.iceFromB)
-        peerB.emit(messages.iceFromA)
-      })
-    })
-
-    describe('Disconnect event on communication end', function() {
-      it('should fire a `ondisctonnected` event', function(done) {
-        peerB.on('disconnected', function() {
-          done()
-        })
-        peerA.connections.get(peerB.id).close()
-      })
+    peerA.on('connected', function() {
+      done()
     })
   })
 
@@ -197,17 +63,10 @@ describe('Peer', function() {
 
       var peers = {}
 
-      before(function(done) {
-        var peerA = peers.A = new Peer(options)
-        var peerB = peers.B = new Peer(options)
-        var peerC = peers.C = new Peer(options)
-
-        peerA.id = 'A'
-        peerB.id = 'B'
-        peerC.id = 'C'
-        peerA.connections.delete('signal')
-        peerB.connections.delete('signal')
-        peerC.connections.delete('signal')
+      beforeEach(function(done) {
+        var peerA = peers.A = newpeer('A')
+        var peerB = peers.B = newpeer('B')
+        var peerC = peers.C = newpeer('C')
 
         var requestFromB = {
           type: 'request-peer',
@@ -217,25 +76,23 @@ describe('Peer', function() {
           forwardBy: []
         }
 
+        // Stub peers to simulate a connection
         sinon.stub(peerA, 'send', function(message) {
-          console.debug('Send A')
-          peers[message.to].emit(message)
+          peers[message.to].dispatchMessage(message)
         })
         sinon.stub(peerB, 'send', function(message) {
-          peers[message.to].emit(message)
+          peers[message.to].dispatchMessage(message)
         })
         sinon.stub(peerC, 'send', function(message) {
-          console.debug('Send C')
-          peers[message.to].emit(message)
+          peers[message.to].dispatchMessage(message)
         })
 
         // Send peer request from B to A and C
-        peerA.emit(requestFromB)
-        peerC.emit(requestFromB)
+        peerA.dispatchMessage(requestFromB)
+        peerC.dispatchMessage(requestFromB)
 
         // Wait for connection to be established
         peerB.on('connected', function() {
-          console.log('Connected')
           done()
         })
       })
@@ -259,9 +116,14 @@ describe('Peer', function() {
       })
 
       it('C receive the peer request (2 hops)', function(done) {
+        peers.A.send.restore()
+        peers.B.send.restore()
+        peers.C.send.restore()
+
         // Only request-peer, icecandidate, offer and answer are forwarded
         peers.C.removeAllListeners('request-peer')
         peers.C.on('request-peer', function(message) {
+          expect(message.from).to.be.equal(peers.A.id)
           expect(message.forwardBy.length).to.be.equal(1)
           expect(message.ttl).to.be.equal(2)
           done()
@@ -277,11 +139,15 @@ describe('Peer', function() {
       })
 
       it('A stores message, requests connection and transmit message', function(done) {
+        peers.A.send.restore()
+        peers.B.send.restore()
+        peers.C.send.restore()
+
         peers.C.on('queuetest', function() {
           expect(peers.A.queue).to.be.empty
           done()
         })
-        expect(peers.A.queue).to.be.empty
+
         peers.A.send({
           type: 'queuetest',
           from: peers.A.id,
@@ -291,7 +157,7 @@ describe('Peer', function() {
           forwardBy: []
         })
         expect(peers.A.queue).to.have.length(1)
-        expect(peers.A.queue[0].message.type).to.be.eq('queuetest')
+        // expect(peers.A.queue[0].message.type).to.be.eq('queuetest')
       })
 
     })
@@ -299,18 +165,15 @@ describe('Peer', function() {
     describe('One node connecting requesting multiple peers', function() {
 
       var peers = {}
-      var peerA = peers.A = new Peer(options)
-      var peerB = peers.B = new Peer(options)
-      var peerC = peers.C = new Peer(options)
+      var peerA
+      var peerB
+      var peerC
 
       // Connect A to B and send request from C to both
       before(function(done) {
-        peerA.id = 'A'
-        peerB.id = 'B'
-        peerC.id = 'C'
-        peerA.connections.delete('signal')
-        peerB.connections.delete('signal')
-        peerC.connections.delete('signal')
+        peerA = peers.a = newpeer('a')
+        peerB = peers.b = newpeer('b')
+        peerC = peers.c = newpeer('c')
 
         var requestFromB = {
           type: 'request-peer',
@@ -327,21 +190,17 @@ describe('Peer', function() {
           forwardBy: []
         }
 
-        sinon.stub(peerA, 'send', function(message) {
-          peers[message.to].emit(message)
-        })
-        sinon.stub(peerB, 'send', function(message) {
-          peers[message.to].emit(message)
-        })
-        sinon.stub(peerC, 'send', function(message) {
-          peers[message.to].emit(message)
-        })
+        var dispatchMessage = function(message) {
+          peers[message.to].dispatchMessage(message)
+        }
+        sinon.stub(peerA, 'send', dispatchMessage)
+        sinon.stub(peerB, 'send', dispatchMessage)
+        sinon.stub(peerC, 'send', dispatchMessage)
 
         peerB.on('connected', function self() {
           // Wait for connection with A to be established
-          peerA.emit(requestFromC)
-          console.log('onconnected B')
-          peerB.emit(requestFromC)
+          peerA.dispatchMessage(requestFromC)
+          peerB.dispatchMessage(requestFromC)
           peerB.removeListener('connected', self)
         })
 
@@ -358,23 +217,21 @@ describe('Peer', function() {
         })
 
         // Connect A and B
-        peerA.emit(requestFromB)
+        peerA.dispatchMessage(requestFromB)
       })
 
       describe('C should be connected', function() {
         it('should have an open connection', function() {
-          expect(peers.C.connections.get('B').status).to.be.equal('open')
+          expect(peerC.connections.get(peerB.id).status).to.be.equal('open')
         })
       })
     })
   })
 
   describe('Timeout messages', function() {
-    var peer = new Peer(options)
-    peer.id = '1'
-    peer.connections.delete('signal')
 
     it('should store non-connection related messages', function() {
+      var peer = newpeer('1')
       peer.send({
         type: 'offer',
         from: peer.id,
@@ -426,22 +283,27 @@ describe('Peer', function() {
 
     it('should drop messages after timeout and executes the callbacks', function(done) {
       var clock = sinon.useFakeTimers()
-      peer = new Peer(options)
-      peer.id = '1'
-      peer.connections.delete('signal')
-
+      var peer = newpeer('1')
       peer.send({
         type: 'queuetest',
         from: peer.id,
-        to: peer.id,
-        data: '',
-        timeout: 1500
-      }, done)
+        to: 'a',
+        data: ''
+      }, Peer.queueTimeout * 1.5, done)
 
+      // After sending
       expect(peer.queue).to.have.length(1)
-      clock.tick(1000)
+      // Just before timeout
+      clock.tick(Peer.queueTimeout - 1)
       expect(peer.queue).to.have.length(1)
-      clock.tick(1000)
+      // Just after first timeout
+      clock.tick(2)
+      expect(peer.queue).to.have.length(1)
+      // After message timeout and before second queue timeout
+      clock.tick(Peer.queueTimeout / 2)
+      expect(peer.queue).to.have.length(1)
+      // After second queue timeout
+      clock.tick(Peer.queueTimeout / 2)
       expect(peer.queue).to.have.length(0)
 
       clock.restore()

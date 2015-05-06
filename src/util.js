@@ -29,8 +29,9 @@
  * Returns a shallow copy of an array with its elements shuffled
  *
  * @function module:util~shuffleArray
- * @param {Array} array - Source array
- * @return {Array} Shuffled elements in a shallow copy
+ * @template T
+ * @param {Array.<T>} array - Source array
+ * @return {Array.<T>} Shuffled elements in a shallow copy
  */
 export function shuffleArray(array) {
   var i, j, temp
@@ -48,9 +49,10 @@ export function shuffleArray(array) {
  * Returns a shallow copy of an array with its elements sorted
  *
  * @function module:util~shallowSort
- * @param {Function} sortFunction -
- * @param {Array} array - Source array
- * @return {Array} Sorted elements in a shallow copy
+ * @template T
+ * @param {(T,T) => boolean} sortFunction - Compare two elements
+ * @param {Array.<T>} array - Source array
+ * @return {Array.<T>} Sorted elements in a shallow copy
  */
 export function shallowSort(sortFunction, array) {
   return array.slice().sort(sortFunction)
@@ -62,7 +64,7 @@ export function shallowSort(sortFunction, array) {
  * to the current file. It is assumed that URL ending in '/' are for directories
  *
  * @function module:util~getUrl
- * @param {string} pathTofile - Relative path for the file
+ * @param {string} pathToFile - Relative path for the file
  * @return {string} Full URL
  */
 export function getURL(pathToFile) {
@@ -91,7 +93,7 @@ export function getURL(pathToFile) {
  * @function module:util~getRemoteFile
  * @param {string} fileUrl - url of the file to be downloaded
  * @param {string} [responseType='blob'] - Type returned by the server
- * @param {number} [range=''] - If a range should be requested instead of the
+ * @param {string} [range=''] - If a range should be requested instead of the
  *        entire file
  * @return {Promise} a new Promise holding the file's URL and ArrayBuffer
  */
@@ -131,9 +133,9 @@ export function getRemoteFile(fileUrl, responseType = 'blob', range = '') {
  * Checks if an element is contained in the given array
  *
  * @function module:util~contains
- * @param {T} element
- * @param {Array.<T>} array
  * @template T
+ * @param {T} element - Element to check
+ * @param {Array.<T>} array - Array to match element against
  * @return {boolean} Whether element is in array or not
  */
 export function contains(element, array) {
@@ -144,9 +146,8 @@ export function contains(element, array) {
  * Checks the properties contained in the message object
  *
  * @function module:util~messageIsValid
- * @param {Message} message
+ * @param {Message} msg - Message needing validation
  * @return {boolean} true if the message is valid
- * @throw {Error}
  */
 export function messageIsValid(msg) {
   var check = function(params) {
@@ -171,10 +172,6 @@ export function messageIsValid(msg) {
     }
     return true
   }).reduce(((acc, elt) => acc && elt), true)
-
-  if(!originals || !additionals) {
-    console.debug(msg)
-  }
 
   return originals && additionals
 }

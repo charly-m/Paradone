@@ -1,28 +1,28 @@
 'use strict'
 
 var Media = require('../src/extensions/media.js')
-var media
-var url = 'url/to/my.file'
-var buildInfo = function(nbParts, available, remote) {
-  return {
-    url: url,
-    parts: nbParts,
-    size: 250,
-    available: available,
-    remote: remote
+var contains = require('../src/util.js').contains
+
+var buildMedia = function(nbParts, available, remotes) {
+  var url = 'url/to/my.file'
+  var media = new Media(url)
+  media.parts = []
+  for(var part = 0; part < nbParts; ++part) {
+    if(contains(part, available)) {
+      media.parts[part] = { status: 'added', partNumber: part }
+    } else {
+      media.parts[part] = { status: 'needed', partNumber: part}
+    }
   }
+  media.remotes = remotes
+  return media
 }
 
 describe('Media', function() {
 
-  beforeEach(function(done) {
-    media = new Media(url, null, null, false)
-    done()
-  })
-
   describe('#peerHasPart', function() {
     it('should have no parts', function() {
-      media.info = buildInfo(3, [], {})
+      var media = buildMedia(3, [], {})
       media.peerHasPart(0).should.be.false
       media.peerHasPart(-1).should.be.false
       media.peerHasPart(1).should.be.false
@@ -30,7 +30,7 @@ describe('Media', function() {
     })
 
     it('should have part n°7', function() {
-      media.info = buildInfo(10, [7], {})
+      var media = buildMedia(10, [7], {})
 
       media.peerHasPart(7).should.be.true
 
@@ -40,7 +40,7 @@ describe('Media', function() {
     })
 
     it('should have multiple continous parts', function() {
-      media.info = buildInfo(5, [0, 1, 2, 3], {})
+      var media = buildMedia(5, [0, 1, 2, 3], {})
 
       media.peerHasPart(0).should.be.true
       media.peerHasPart(1).should.be.true
@@ -54,7 +54,7 @@ describe('Media', function() {
     })
 
     it('should have multiple discontinous parts', function() {
-      media.info = buildInfo(10, [0, 3, 4, 7], {})
+      var media = buildMedia(10, [0, 3, 4, 7], {})
 
       media.peerHasPart(0).should.be.true
       media.peerHasPart(3).should.be.true
@@ -66,7 +66,7 @@ describe('Media', function() {
     })
 
     it('should have all the parts', function() {
-      media.info = buildInfo(3, [0, 1, 2], {})
+      var media = buildMedia(3, [0, 1, 2], {})
 
       media.peerHasPart(0).should.be.true
       media.peerHasPart(1).should.be.true
@@ -79,13 +79,13 @@ describe('Media', function() {
 
   describe('#remoteHasPart', function() {
     it('should have no parts if there is no known peers', function() {
-      media.info = buildInfo(3, [], {})
+      var media = buildMedia(3, [], {})
       media.remoteHasPart(1, 0).should.be.false
       media.remoteHasPart(1, 1).should.be.false
     })
 
     it('should find the parts for one peer', function() {
-      media.info = buildInfo(3, [1], {1: [0, 1, 4, 5]})
+      var media = buildMedia(3, [1], {1: [0, 1, 4, 5]})
 
       media.remoteHasPart(1, 1).should.be.true
 
@@ -94,7 +94,7 @@ describe('Media', function() {
     })
 
     it('should find parts for multiple peers', function() {
-      media.info = buildInfo(5, [1, 2, 3], {2: [0, 2, 4], 5: [1, 2]})
+      var media = buildMedia(5, [1, 2, 3], {2: [0, 2, 4], 5: [1, 2]})
 
       media.remoteHasPart(2, 0).should.be.true
       media.remoteHasPart(2, 2).should.be.true
@@ -110,9 +110,8 @@ describe('Media', function() {
 
   describe('#nextPartsToDownload', function() {
     it('should give three parts from peer n°1', function() {
-      var infoOnepeerFullparts = buildInfo(5, [], {1: [0, 1, 2, 3, 4]})
+      var media = buildMedia(5, [], {1: [0, 1, 2, 3, 4]})
 
-      media.info = infoOnepeerFullparts
       var nextParts = media.nextPartsToDownload(3)
       expect(nextParts).not.to.be.null
       expect(Array.isArray(nextParts)).to.be.true
@@ -120,12 +119,11 @@ describe('Media', function() {
     })
 
     it('should give three parts possibly form different peers', function() {
-      var infoOnepeerFullparts = buildInfo(5, [], {
+      var media = buildMedia(5, [], {
         1: [1, 2, 5],
         3: [0, 1, 3, 4]
       })
 
-      media.info = infoOnepeerFullparts
       var nextParts = media.nextPartsToDownload(3)
       expect(nextParts).not.to.be.null
       expect(Array.isArray(nextParts)).to.be.true

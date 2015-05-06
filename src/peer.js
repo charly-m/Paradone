@@ -52,7 +52,7 @@ var RTCSessionDescription =
  *
  * @class Peer
  * @implements {MessageEmitter}
- * @param {Object} [options] - Configuration options
+ * @param {Object} options - Configuration options
  *
  * @property {string} id - Id of the peer
  * @property {Map.<PeerConnection>} connections - Connections indexed by remote
@@ -71,11 +71,20 @@ function Peer(options) {
   MessageEmitter.call(this)
 
   if(typeof options !== 'undefined') {
+
     if(options.hasOwnProperty('extensions')) {
       extensions.apply(this, options.extensions)
     }
-    if(options.hasOwnProperty('peer') && options.peer.hasOwnProperty('ttl')) {
-      Peer.ttl = options.peer.ttl
+
+    if(options.hasOwnProperty('peer')) {
+
+      if(options.peer.hasOwnProperty('ttl')) {
+        Peer.ttl = options.peer.ttl
+      }
+
+      if(options.hasOwnProperty('queueTimeout')) {
+        Peer.queueTimeout = options.peer.queueTimeout
+      }
     }
   }
 
@@ -87,7 +96,6 @@ function Peer(options) {
   this.icecandidates = new Map()
   this.ttl = Peer.ttl
   this.queue = []
-  this.previousTimestamp = -Infinity
 
   this.connections.set('signal', signal)
   window.setInterval(processQueue.bind(this), Peer.queueTimeout)
@@ -104,7 +112,7 @@ function Peer(options) {
 Peer.prototype = Object.create(MessageEmitter.prototype)
 
 /**
- * Maximum `time to live' for a message sent on the p2p network
+ * Maximum `time to live' for a message forwarded on the p2p network
  *
  * @name Peer.ttl
  * @type {number}
@@ -153,9 +161,11 @@ var broadcast = function(connections, message) {
  *
  * @function Peer#send
  * @param {Message} message - information to be sent
+ * @param {number} [timeout] - Time after which the message will be removed from
+ *        the queue. If a callback was provided ti will be called
  * @param {Function} [callback] - Function executed when the timeout is reached
  */
-Peer.prototype.send = function(message, callback) {
+Peer.prototype.send = function(message, timeout, callback) {
 
   if(!messageIsValid(message)) {
     throw new Error('Message object is invalid')
@@ -182,7 +192,7 @@ Peer.prototype.send = function(message, callback) {
   } else {
     // Its a queuable message
     var timestamp = Date.now()
-    this.queue.push({ message, callback, timestamp })
+    this.queue.push({ message, callback, timeout, timestamp })
     this.requestPeer(message.to)
   }
 }
@@ -356,11 +366,6 @@ var onrequestpeer = function(message) {
 var onfirstview = function(message) {
   this.id = message.data.id
   this.view = message.data.view
-  this.dispatchMessage({
-    from: this.id,
-    to: this.id,
-    type: 'signal-ready'
-  })
 }
 
 /**
@@ -379,11 +384,14 @@ var onconnected = function(message) {
 }
 
 /**
- * Check if messages have reached their timeout and executes their callbacks
+ * Check if messages have reached their timeout and executes their callbacks. If
+ * a message wasn't send with a timeout it will be kept forever in the queue. If
+ * a callback was given it will be triggered when the message is removed from
+ * the queue.
  */
 var processQueue = function() {
 
-  // Divide messages depending on conection status (can be sent or not)
+  // Divide messages depending on connection status (can be sent or not)
   var [messagesToSend, messagesToAge] = partition(elt => {
     // Check if connection is available
     var message = elt.message
@@ -394,12 +402,12 @@ var processQueue = function() {
   // Send the messages with connection available
   messagesToSend.forEach(elt => this.send(elt.message))
 
-  var lastTimestamp = this.previousTimestamp
+  var now = Date.now()
   // Divide messages
   var [messagesToTimeout, messagesToEnqueue] = partition(elt => {
-    return elt.message.hasOwnProperty('timeout') &&
-      typeof elt.message.timeout === 'number' &&
-      lastTimestamp - elt.timestamp > elt.message.timeout
+    return elt.hasOwnProperty('timeout') &&
+      typeof elt.timeout === 'number' &&
+      now - elt.timestamp > elt.timeout
   }, messagesToAge)
 
   messagesToTimeout.forEach(elt => {
@@ -409,5 +417,4 @@ var processQueue = function() {
   })
 
   this.queue = messagesToEnqueue
-  this.previousTimestamp = Date.now()
 }

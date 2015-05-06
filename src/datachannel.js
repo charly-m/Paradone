@@ -56,7 +56,12 @@ export const options = {
  */
 var onclose = function(peer, peerConnection, remotePeer, event) {
   peerConnection.status = 'close'
-  peer.dispatchMessage({type: 'disconnected', from: remotePeer, data: event})
+  peer.dispatchMessage({
+    type: 'disconnected',
+    to: peer.id,
+    from: remotePeer,
+    data: event
+  })
 }
 
 /** An error has been thrown by the DataChannel */
@@ -92,7 +97,12 @@ var onopen = function(peer, peerConnection, remotePeer, event) {
   if('open' === channel.readyState.toLowerCase()) {
     peerConnection.channel = channel
     peerConnection.status = 'open'
-    peer.dispatchMessage({type: 'connected', from: remotePeer, data: event})
+    peer.dispatchMessage({
+      type: 'connected',
+      from: remotePeer,
+      to: peer.id,
+      data: event
+    })
   }
 }
 

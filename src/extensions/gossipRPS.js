@@ -37,10 +37,10 @@ export default GossipRPS
  * @param {String} id - Id of the peer
  * @param {Object} options - Algorithm options
  * @param {number} [options.C=10] - Maximum size of the view
- * @param {number} [options.H=0] - Healing factor: How many old nodes are
- *        removed during an exchange
- * @param {number} [options.S=0] - Swap factor: How many transmitted descriptors
- *        are removed from the view
+ * @param {number} [options.H=0] - Healing factor: How many of the oldest nodes
+ *        are removed during an exchange
+ * @param {number} [options.S=0] - Swap factor: How many of the exchanged
+ *        descriptors are removed from the view
  *
  * @property {String} id - Id of the peer
  * @property {Object} options - Algorithm options

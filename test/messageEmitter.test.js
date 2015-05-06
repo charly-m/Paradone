@@ -53,6 +53,12 @@ describe('MessageEmitter', function() {
 
   describe('#once', function() {
     var me, check
+    var message = {
+      type: 'onlyonce',
+      from: 'a',
+      to: 'b',
+      data: ''
+    }
 
     beforeEach(function() {
       me = new ME()
@@ -67,14 +73,12 @@ describe('MessageEmitter', function() {
     })
 
     it('should trigger the listener', function() {
-      me.emit({type: 'onlyonce'})
-      expect(me.listenerCount()).to.be.eq(0)
+      me.dispatchMessage(message)
       expect(check).to.be.true
-
     })
 
     it('should remove the listenenr', function() {
-      me.emit({type: 'onlyonce'})
+      me.dispatchMessage(message)
       expect(me.listenerCount()).to.be.eq(0)
     })
   })
@@ -137,7 +141,15 @@ describe('MessageEmitter', function() {
 
   })
 
-  describe('#emit', function() {
+  describe('#dispatchMessage', function() {
+
+    var message = {
+      type: 'type',
+      from: 'a',
+      to: 'b',
+      data: ''
+    }
+
     it('should trigger the only listener', function() {
       var me = new ME()
       var check1 = false
@@ -150,7 +162,7 @@ describe('MessageEmitter', function() {
       }
       me.on('type', l1)
         .on('type2', l2)
-      me.emit({type: 'type'})
+      me.dispatchMessage(message)
       expect(check1).to.be.true
       expect(check2).to.be.false
     })
@@ -167,7 +179,7 @@ describe('MessageEmitter', function() {
       }
       me.on('type', l1)
         .on('type', l2)
-      me.emit({type: 'type'})
+      me.dispatchMessage(message)
       expect(check1).to.be.true
       expect(check2).to.be.true
     })

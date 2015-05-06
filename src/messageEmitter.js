@@ -16,7 +16,7 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Paradone.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @flow weak
+ * @flow
  */
 'use strict'
 
@@ -44,8 +44,8 @@ function MessageEmitter() {
 MessageEmitter.prototype.addListener = MessageEmitter.prototype.on
 
 /**
- * Adds a listener function to the specified message type. The method
- * `addListener` can also be used.
+ * Adds a listener function to the specified message type. Synonym of {@link
+ * MessageEmitter#addEventListener}
  *
  * @function MessageEmitter#on
  * @param {String} messageType - Type of message the listener will handle

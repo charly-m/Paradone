@@ -34,15 +34,15 @@ var MediaSource = window.MediaSource || window.WebKitMediaSource
  */
 
 /**
- * @tyepdef {Object} Metadata
+ * @typedef {Object} Metadata
  * @desc Information about the video file downloaded from the server
  * @property {number} total_size - Total size in bytes of the file
  * @property {number} duration - Length in seconds of the video
- * @property {Array.<MetadataCluster>} clusters - Informations about video parts
+ * @property {Array.<Metacluster>} clusters - Informations about video parts
  */
 
 /**
- * @typedef {Object} MetadataCluster
+ * @typedef {Object} Metacluster
  * @property {number} offset - Offset in bytes from the beginning of the file
  *           marking the beginning of the part
  * @property {number} timecode - Offset in secondes from the beginning of the
@@ -103,21 +103,7 @@ function Media(sourceURL, sourceTag, autoload = false) {
   this.complete = false
   this.autoload = autoload
   this.parts = [] // TODO Tricky indexes
-
-  // DEBUG
-  window.media = this
 }
-
-/**
- * Timeout indicating how long the peer should wait for an answer from remote
- * peers before it downloads the file from the server. This value can be set
- * trough the parameter of the "media" extension. The value is in ms and the
- * default is 5000 (5 seconds)
- *
- * @name Media.downloadTimeout
- * @type {number}
- */
-Media.downloadTimeout = 5000
 
 /**
  * Action done when the file is complete. Here we start playing the media if
@@ -189,7 +175,8 @@ Media.prototype.nextPartsToDownload = function(howMany) {
  */
 Media.prototype.peerHasPart = function(partNumber) {
   var part = this.parts[partNumber]
-  return part.status === 'available' || part.status === 'added'
+  return typeof part !== 'undefined' &&
+    (part.status === 'available' || part.status === 'added')
 }
 
 /**

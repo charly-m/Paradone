@@ -91,27 +91,18 @@ var askForNextParts = function(media, nbParts) {
       url: media.url,
       ttl: this.ttl,
       forwardBy: [],
-      number: choice.partNumber,
-      timeout: 3000
-    }, downloadFromServer(this, choice.partNumber))
+      number: choice.partNumber
+    }, MediaPeer.downloadTimeout, downloadFromServer(this, choice.partNumber))
 
     media.parts[choice.partNumber].status = 'pending'
   })
 }
 
 /**
- * Handles when the channel is openned
- *
- * @param {Message} message
- * @param {string} message.from - Id of the remote peer we just connected to
- */
-var onconnected = function(message) {}
-
-/**
  * Saves the received metadata and asks for the part used to initialized the
  * source buffer
  *
- * @param {Message} message
+ * @param {Message.<media:metadata>} message
  * @param {Metadata} message.data
  */
 var onmetadata = function(message) {
@@ -133,7 +124,7 @@ var onmetadata = function(message) {
 /**
  * Downloads metadata from the server
  *
- * @param {Message} message
+ * @param {Message.<media:request-metadata>} message
  */
 var onrequestmetadata = function(message) {
   var metaURL = message.data
@@ -152,7 +143,7 @@ var onrequestmetadata = function(message) {
 /**
  * Saves the received head of the media and asks for the video parts
  *
- * @param {Message} message
+ * @param {Message.<media:head>} message
  * @param {Array.<number>} message.data
  */
 var onhead = function(message) {
@@ -168,7 +159,7 @@ var onhead = function(message) {
 /**
  * Downloads the "head" part of the video from the server
  *
- * @param {Message} message
+ * @param {Message.<media:request-head>} message
  */
 var onrequesthead = function(message) {
   var url = message.url
@@ -187,7 +178,9 @@ var onrequesthead = function(message) {
 /**
  * Message containing a part of the desired media
  *
- * @param {Message} message - A part type message containing a chunk of media
+ * @param {Message.<media:part>} message - A part type message containing a
+ *        chunk of media
+ * @param {Array} message.data - Array containing a chunk of media
  */
 var onpart = function(message) {
   console.assert(this.files.has(message.url),
@@ -205,7 +198,8 @@ var onpart = function(message) {
  * The remote peer requests some file part
  * We need to check if we have them and then we can send them
  *
- * @param {Message} message - A request for a chunk of a media
+ * @param {Message.<media:request-part>} message - A request for a chunk of a
+ *        media
  */
 var onrequestpart = function(message) {
   var media = this.files.get(message.url)
@@ -223,7 +217,7 @@ var onrequestpart = function(message) {
 }
 
 /**
- * Parse the document and get all videos elements
+ * Parse the document and get all video elements
  *
  * @function MediaPeer#parseDocument
  */
@@ -248,7 +242,7 @@ var parseDocument = function() {
  * the peer in order to reflect this change on the partial views of other remote
  * peers
  *
- * @param {Message<part>} message
+ * @param {Message.<part>} message
  */
 var updateGossipDescriptor = function(message) {
   var media = this.files.get(message.url)
@@ -277,19 +271,30 @@ var updateGossipDescriptor = function(message) {
 /**
  * Update the remote information of a media file when a new view is received
  *
- * @param {Message<gossip:view-update>} message
+ * @param {Message.<gossip:view-update>} message
  */
 var updateRemoteInformation = function(message) {
+  // Initial Data is
+  // peer.view = { id: id,
+  //               age: age,
+  //               media: {
+  //                 'url1': [1,2,3,6],
+  //                 'url2': [5] }}
+  // Transformed in
+  // file.remotes = { remote1: [1,2,3,6],
+  //                  remote2: [3,4] }
   var view = message.data
   this.files.forEach((file, url) => {
     var remotes = view
+          // Keep the information if they contain `url`
           .filter(nd => nd.hasOwnProperty('media') &&
                   nd.media.hasOwnProperty(url))
           .map(nd => {
+            // Create an object for each peer: { peerId: [partNumbers] }
             let result = {}
             result[nd.id] = nd.media[url]
             return result
-          })
+          }) // Merge all objects
           .reduce(((acc, remote) => merge(acc, remote)), {})
     file.remotes = remotes
   })
@@ -303,16 +308,14 @@ var updateRemoteInformation = function(message) {
  * @extends Peer
  * @property {Media} files - Map of files indexed by url
  * @param {Object} options
- * @param {number} options.downloadTimeout - Timeout after which the media
- *        should be downloaded from the server
- * @param {number} options.concurrentParts - Number of parts that should be
+ * @param {number} [options.downloadTimeout=5000] - Timeout after which the
+ *        media should be downloaded from the server
+ * @param {number} [options.concurrentParts=3] - Number of parts that should be
  *        downloaded simultaneously by the peer
- * @param {boolean} options.autoload - Automatically parse the document
+ * @param {boolean} [options.autoload=false] - Automatically parse the document
 
  */
 function MediaPeer(options) {
-  // Start the script on each connection
-  this.on('connected', onconnected)
 
   this.on('media:request-metadata', onrequestmetadata)
   this.on('media:metadata', onmetadata)
@@ -333,7 +336,7 @@ function MediaPeer(options) {
   // MediaStore.forEachStoredMedia(media => this.files.set(media.url, media))
 
   if(options.hasOwnProperty('downloadTimeout')) {
-    Media.downloadTimeout = options.downloadTimeout
+    MediaPeer.downloadTimeout = options.downloadTimeout
   }
 
   if(options.hasOwnProperty('concurrentParts')) {
@@ -362,3 +365,14 @@ MediaPeer.concurrentParts = 3
  * @see https://code.google.com/p/webrtc/issues/detail?id=2270#c35
  */
 MediaPeer.chunkSize = 17500
+
+/**
+ * Timeout indicating how long the peer should wait for an answer from remote
+ * peers before it downloads the file from the server. This value can be set
+ * trough the parameter of the "media" extension. The value is in ms and the
+ * default is 5000 (5 seconds)
+ *
+ * @name MediaPeer.downloadTimeout
+ * @type {number}
+ */
+MediaPeer.downloadTimeout = 5000
