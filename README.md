@@ -70,7 +70,7 @@ Opera.
 The video served to the client must be played within a HTML5 Video tag. You will
 need to check the codec of your files.
 
-Firefox users need to turn the porperty `media.mediasource.webm.enabled` to
+Firefox users need to turn the property `media.mediasource.webm.enabled` to
 `true` in `about:config`
 
 #### Server side ####
