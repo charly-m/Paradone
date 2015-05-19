@@ -102,7 +102,7 @@ the following options:
 ### Usage ###
 
 Every element of the project is referenced under the `paradone` namespace. Once
-the `start` function called the script will find the video tags and share the
+the `start` function called, the script will find the video tags and share the
 media between users through the mesh. You can pass options as arguments to the
 `start` function, see the [API](https://paradone.github.io/api/)
 for more detailed informations.
